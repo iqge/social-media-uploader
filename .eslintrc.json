@@ -2,14 +2,17 @@
     "parser": "@typescript-eslint/parser",
     "extends": [
       "eslint:recommended",
-      "plugin:@typescript-eslint/recommended"
+      "plugin:@typescript-eslint/recommended",
+      "plugin:prettier/recommended"
     ],
+    "plugins": ["@typescript-eslint", "prettier"],
     "parserOptions": {
       "ecmaVersion": 2020,
       "sourceType": "module"
     },
     "rules": {
       "semi": ["error", "always"],
-      "quotes": ["error", "single"]
+      "quotes": ["error", "single"],
+      "prettier/prettier": "error"
     }
   }
