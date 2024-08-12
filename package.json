@@ -1,0 +1,27 @@
+{
+  "name": "social-media-uploader",
+  "version": "1.0.0",
+  "description": "Social Media Uploader is an open-source Node.js project designed to help users upload content to multiple social media platforms. Initially, it supports YouTube, with plans to extend support to other platforms such as Facebook, Instagram, Twitter, LinkedIn, and TikTok.",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc",
+    "test": "jest",
+    "lint": "eslint . --ext .ts",
+    "start": "node dist/index.js",
+    "dev": "tsc-watch --onSuccess \"npm start\"",
+    "test:watch": "jest --watch"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/jest": "^29.5.12",
+    "@typescript-eslint/eslint-plugin": "^8.1.0",
+    "@typescript-eslint/parser": "^8.1.0",
+    "eslint": "^9.9.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.2.4",
+    "tsc-watch": "^6.2.0",
+    "typescript": "^5.5.4"
+  }
+}
