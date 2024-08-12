@@ -8,10 +8,11 @@
     "test": "jest",
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",
-    "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\"",
+    "format": "prettier --write \"src/**/*.ts\"",
     "start": "node dist/index.js",
     "dev": "tsc-watch --onSuccess \"npm start\"",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "prepare": "husky"
   },
   "keywords": [],
   "author": "",
@@ -30,16 +31,5 @@
     "ts-jest": "^29.2.4",
     "tsc-watch": "^6.2.0",
     "typescript": "^5.5.4"
-  },
-  "husky": {
-    "hooks": {
-      "pre-commit": "lint-staged"
-    }
-  },
-  "lint-staged": {
-    "*.ts": [
-      "eslint --fix",
-      "prettier --write"
-    ]
   }
 }
