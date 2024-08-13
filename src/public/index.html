@@ -61,6 +61,7 @@
     }
     .video-form-section {
       margin-bottom: 20px;
+      position: relative;
     }
     .video-form-section video {
       width: 30vw; /* 30% of the viewport width */
@@ -68,6 +69,17 @@
       height: auto; /* Maintain aspect ratio */
       margin-top: 10px;
       object-fit: cover; /* Ensures the video fits within the box */
+    }
+    .delete-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background-color: red;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      padding: 5px 10px;
     }
   </style>
 </head>
@@ -112,6 +124,17 @@
         const formSection = document.createElement('div');
         formSection.classList.add('video-form-section');
 
+        const deleteButton = document.createElement('button');
+        deleteButton.classList.add('delete-btn');
+        deleteButton.textContent = 'Delete';
+        deleteButton.addEventListener('click', () => {
+          formSection.remove();
+          if (videoFormsContainer.children.length === 0) {
+            videoInput.value = ''; // Reset file input if no videos are left
+          }
+        });
+        formSection.appendChild(deleteButton);
+
         const videoPreview = document.createElement('video');
         videoPreview.controls = true;
         videoPreview.src = URL.createObjectURL(file);
@@ -138,10 +161,27 @@
         publishAtInput.placeholder = 'Publish Date (optional)';
         formSection.appendChild(publishAtInput);
 
+        const changeVideoInput = document.createElement('input');
+        changeVideoInput.type = 'file';
+        changeVideoInput.accept = 'video/*';
+        changeVideoInput.style.display = 'none';
+        changeVideoInput.addEventListener('change', (event) => {
+          const newFile = event.target.files[0];
+          videoPreview.src = URL.createObjectURL(newFile);
+        });
+
+        const changeVideoButton = document.createElement('button');
+        changeVideoButton.type = 'button';
+        changeVideoButton.textContent = 'Change Video';
+        changeVideoButton.addEventListener('click', () => {
+          changeVideoInput.click();
+        });
+        formSection.appendChild(changeVideoButton);
+        formSection.appendChild(changeVideoInput);
+
         videoFormsContainer.appendChild(formSection);
       });
     });
-
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       button.disabled = true;
@@ -164,6 +204,8 @@
       } finally {
         button.disabled = false;
         loader.style.display = 'none';
+        videoFormsContainer.innerHTML = ''; // Clear the video forms
+        videoInput.value = ''; // Reset the file input
       }
     });
   </script>
