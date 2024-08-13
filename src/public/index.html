@@ -4,19 +4,92 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>YouTube Uploader</title>
+  <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    h1 {
+      color: #333;
+    }
+    form {
+      max-width: 400px;
+      margin: auto;
+      padding: 20px;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      background-color: #f9f9f9;
+    }
+    input, textarea, button {
+      width: 100%;
+      margin-bottom: 10px;
+      padding: 10px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+    button {
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+    }
+    .loader {
+      display: none;
+      border: 4px solid #f3f3f3;
+      border-radius: 50%;
+      border-top: 4px solid #3498db;
+      width: 20px;
+      height: 20px;
+      -webkit-animation: spin 2s linear infinite;
+      animation: spin 2s linear infinite;
+      margin: auto;
+    }
+    @-webkit-keyframes spin {
+      0% { -webkit-transform: rotate(0deg); }
+      100% { -webkit-transform: rotate(360deg); }
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    #video-preview {
+      display: none;
+      width: 300px; /* Fixed width */
+      height: 200px; /* Fixed height */
+      margin-top: 10px;
+      object-fit: cover; /* Ensures the video fits within the box */
+    }
+  </style>
 </head>
 <body>
   <h1>Upload Video to YouTube</h1>
   <a href="/auth">Authenticate with YouTube</a>
   <form id="upload-form" enctype="multipart/form-data" method="POST">
+    <video id="video-preview" controls></video>
     <input type="hidden" name="access_token" id="access_token">
     <input type="text" name="title" placeholder="Title" required><br>
     <textarea name="description" placeholder="Description" required></textarea><br>
     <input type="file" name="video" accept="video/*" required><br>
+    <input type="text" id="publishAt" name="publishAt" placeholder="Publish Date (optional)"><br>
     <button type="submit">Upload</button>
+    <div class="loader" id="loader"></div>
   </form>
 
   <script>
+    $(function() {
+      $("#publishAt").datepicker({
+        dateFormat: "yy-mm-dd",
+        minDate: 0 // Prevent selecting past dates
+      });
+    });
+
     const urlParams = new URLSearchParams(window.location.search);
     const accessToken = urlParams.get('access_token');
 
@@ -25,18 +98,43 @@
     }
 
     const form = document.getElementById('upload-form');
+    const button = form.querySelector('button');
+    const loader = document.getElementById('loader');
+    const videoInput = form.querySelector('input[name="video"]');
+    const videoPreview = document.getElementById('video-preview');
+
+    videoInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const url = URL.createObjectURL(file);
+        videoPreview.src = url;
+        videoPreview.style.display = 'block';
+      } else {
+        videoPreview.style.display = 'none';
+      }
+    });
+
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
+      button.disabled = true;
+      loader.style.display = 'block';
       const formData = new FormData(form);
-      const response = await fetch('/upload', {
-        method: 'POST',
-        body: formData,
-      });
-      const result = await response.json();
-      if (response.ok) {
-        alert(`Video uploaded successfully! Video ID: ${result.videoId}`);
-      } else {
-        alert(`Failed to upload video: ${result.error}`);
+      try {
+        const response = await fetch('/upload', {
+          method: 'POST',
+          body: formData,
+        });
+        const result = await response.json();
+        if (response.ok) {
+          alert(`Video uploaded successfully! Video ID: ${result.videoId}`);
+        } else {
+          alert(`Failed to upload video: ${result.error}`);
+        }
+      } catch (error) {
+        alert(`An error occurred: ${error.message}`);
+      } finally {
+        button.disabled = false;
+        loader.style.display = 'none';
       }
     });
   </script>

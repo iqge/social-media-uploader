@@ -25,6 +25,8 @@ const youtube = google.youtube({
   auth: oauth2Client,
 });
 
+const validVideoExtensions = ['.mp4', '.mov', '.avi', '.mkv', '.flv', '.wmv'];
+
 app.get('/auth', (req: Request, res: Response) => {
   const authUrl = oauth2Client.generateAuthUrl({
     access_type: 'offline',
@@ -44,6 +46,10 @@ app.get('/oauth2callback', async (req: Request, res: Response) => {
   }
 });
 
+app.get('/', (req: Request, res: Response) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
 app.get('/upload-form', (req: Request, res: Response) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
@@ -53,28 +59,39 @@ app.post(
   upload.single('video'),
   async (req: Request, res: Response) => {
     try {
-      const { title, description, access_token } = req.body;
+      const { title, description, access_token, publishAt } = req.body;
       const file = req.file;
 
       if (!file) {
         return res.status(400).json({ error: 'No file uploaded' });
       }
 
-      const { path: filePath, mimetype } = file;
+      const { path: filePath, originalname, mimetype } = file;
+
+      const fileExtension = path.extname(originalname).toLowerCase();
+      if (!validVideoExtensions.includes(fileExtension)) {
+        return res.status(400).json({ error: 'Invalid video file extension' });
+      }
 
       oauth2Client.setCredentials({ access_token });
 
+      const requestBody: any = {
+        snippet: {
+          title,
+          description,
+        },
+        status: {
+          privacyStatus: 'private', // Set to private initially if scheduling
+        },
+      };
+
+      if (publishAt) {
+        requestBody.status.publishAt = new Date(publishAt).toISOString();
+      }
+
       const response = await youtube.videos.insert({
         part: ['snippet', 'status'],
-        requestBody: {
-          snippet: {
-            title,
-            description,
-          },
-          status: {
-            privacyStatus: 'public',
-          },
-        },
+        requestBody,
         media: {
           body: fs.createReadStream(filePath),
         },
@@ -86,6 +103,7 @@ app.post(
           videoId: response.data.id,
         });
       } else {
+        console.error('Error uploading video:', res);
         res.status(500).json({ error: 'Failed to upload video' });
       }
     } catch (error) {
