@@ -16,7 +16,7 @@
       color: #333;
     }
     form {
-      max-width: 400px;
+      max-width: 600px;
       margin: auto;
       padding: 20px;
       border: 1px solid #ccc;
@@ -59,10 +59,13 @@
       0% { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
     }
-    #video-preview {
-      display: none;
-      width: 300px; /* Fixed width */
-      height: 200px; /* Fixed height */
+    .video-form-section {
+      margin-bottom: 20px;
+    }
+    .video-form-section video {
+      width: 30vw; /* 30% of the viewport width */
+      height: 30vh; /* 30% of the viewport height */
+      height: auto; /* Maintain aspect ratio */
       margin-top: 10px;
       object-fit: cover; /* Ensures the video fits within the box */
     }
@@ -72,21 +75,20 @@
   <h1>Upload Video to YouTube</h1>
   <a href="/auth">Authenticate with YouTube</a>
   <form id="upload-form" enctype="multipart/form-data" method="POST">
-    <video id="video-preview" controls></video>
     <input type="hidden" name="access_token" id="access_token">
-    <input type="text" name="title" placeholder="Title" required><br>
-    <textarea name="description" placeholder="Description" required></textarea><br>
-    <input type="file" name="video" accept="video/*" required><br>
-    <input type="text" id="publishAt" name="publishAt" placeholder="Publish Date (optional)"><br>
+    <input type="file" id="video-input" name="videos" accept="video/*" multiple required><br>
+    <div id="video-forms-container"></div>
     <button type="submit">Upload</button>
-    <div class="loader" id="loader"></div>
+    <div class="loader" id="loader" style="display:none;">Uploading...</div>
   </form>
 
   <script>
     $(function() {
-      $("#publishAt").datepicker({
-        dateFormat: "yy-mm-dd",
-        minDate: 0 // Prevent selecting past dates
+      $(document).on('focus', '.publishAt', function() {
+        $(this).datepicker({
+          dateFormat: "yy-mm-dd",
+          minDate: 0 // Prevent selecting past dates
+        });
       });
     });
 
@@ -100,18 +102,44 @@
     const form = document.getElementById('upload-form');
     const button = form.querySelector('button');
     const loader = document.getElementById('loader');
-    const videoInput = form.querySelector('input[name="video"]');
-    const videoPreview = document.getElementById('video-preview');
+    const videoInput = document.getElementById('video-input');
+    const videoFormsContainer = document.getElementById('video-forms-container');
 
     videoInput.addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (file) {
-        const url = URL.createObjectURL(file);
-        videoPreview.src = url;
+      videoFormsContainer.innerHTML = ''; // Clear previous forms
+      const files = e.target.files;
+      Array.from(files).forEach((file, index) => {
+        const formSection = document.createElement('div');
+        formSection.classList.add('video-form-section');
+
+        const videoPreview = document.createElement('video');
+        videoPreview.controls = true;
+        videoPreview.src = URL.createObjectURL(file);
         videoPreview.style.display = 'block';
-      } else {
-        videoPreview.style.display = 'none';
-      }
+        formSection.appendChild(videoPreview);
+
+        const titleInput = document.createElement('input');
+        titleInput.type = 'text';
+        titleInput.name = `title_${index}`;
+        titleInput.placeholder = 'Title';
+        titleInput.required = true;
+        formSection.appendChild(titleInput);
+
+        const descriptionTextarea = document.createElement('textarea');
+        descriptionTextarea.name = `description_${index}`;
+        descriptionTextarea.placeholder = 'Description';
+        descriptionTextarea.required = true;
+        formSection.appendChild(descriptionTextarea);
+
+        const publishAtInput = document.createElement('input');
+        publishAtInput.type = 'text';
+        publishAtInput.name = `publishAt_${index}`;
+        publishAtInput.classList.add('publishAt');
+        publishAtInput.placeholder = 'Publish Date (optional)';
+        formSection.appendChild(publishAtInput);
+
+        videoFormsContainer.appendChild(formSection);
+      });
     });
 
     form.addEventListener('submit', async (e) => {
@@ -126,9 +154,10 @@
         });
         const result = await response.json();
         if (response.ok) {
-          alert(`Video uploaded successfully! Video ID: ${result.videoId}`);
+          alert(`Videos uploaded successfully! Check console for details.`);
+          console.log(result.videos);
         } else {
-          alert(`Failed to upload video: ${result.error}`);
+          alert(`Failed to upload videos: ${result.error}`);
         }
       } catch (error) {
         alert(`An error occurred: ${error.message}`);

@@ -56,59 +56,62 @@ app.get('/upload-form', (req: Request, res: Response) => {
 
 app.post(
   '/upload',
-  upload.single('video'),
+  upload.array('videos'),
   async (req: Request, res: Response) => {
     try {
-      const { title, description, access_token, publishAt } = req.body;
-      const file = req.file;
+      const { access_token } = req.body;
+      const files = req.files as Express.Multer.File[];
 
-      if (!file) {
-        return res.status(400).json({ error: 'No file uploaded' });
-      }
-
-      const { path: filePath, originalname, mimetype } = file;
-
-      const fileExtension = path.extname(originalname).toLowerCase();
-      if (!validVideoExtensions.includes(fileExtension)) {
-        return res.status(400).json({ error: 'Invalid video file extension' });
+      if (!files || files.length === 0) {
+        return res.status(400).json({ error: 'No files uploaded' });
       }
 
       oauth2Client.setCredentials({ access_token });
 
-      const requestBody: any = {
-        snippet: {
-          title,
-          description,
-        },
-        status: {
-          privacyStatus: 'private', // Set to private initially if scheduling
-        },
-      };
+      const uploadPromises = files.map(async (file, index) => {
+        const title = req.body[`title_${index}`];
+        const description = req.body[`description_${index}`];
+        const publishAt = req.body[`publishAt_${index}`];
 
-      if (publishAt) {
-        requestBody.status.publishAt = new Date(publishAt).toISOString();
-      }
+        const fileExtension = path.extname(file.originalname).toLowerCase();
+        if (!validVideoExtensions.includes(fileExtension)) {
+          throw new Error('Invalid video file extension');
+        }
 
-      const response = await youtube.videos.insert({
-        part: ['snippet', 'status'],
-        requestBody,
-        media: {
-          body: fs.createReadStream(filePath),
-        },
+        const requestBody: any = {
+          snippet: {
+            title,
+            description,
+          },
+          status: {
+            privacyStatus: 'private', // Set to private initially if scheduling
+          },
+        };
+
+        if (publishAt) {
+          requestBody.status.publishAt = new Date(publishAt).toISOString();
+        }
+
+        const response = await youtube.videos.insert({
+          part: ['snippet', 'status'],
+          requestBody,
+          media: {
+            body: fs.createReadStream(file.path),
+          },
+        });
+
+        return response.data;
       });
 
-      if (response.data) {
-        res.status(200).json({
-          message: 'Video uploaded successfully',
-          videoId: response.data.id,
-        });
-      } else {
-        console.error('Error uploading video:', res);
-        res.status(500).json({ error: 'Failed to upload video' });
-      }
+      const results = await Promise.all(uploadPromises);
+
+      res.status(200).json({
+        message: 'Videos uploaded successfully',
+        videos: results,
+      });
     } catch (error) {
-      console.error('Error uploading video:', error);
-      res.status(500).json({ error: 'Failed to upload video' });
+      console.error('Error uploading videos:', error);
+      res.status(500).json({ error: 'Failed to upload videos' });
     }
   }
 );
