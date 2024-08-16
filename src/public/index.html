@@ -6,6 +6,9 @@
   <title>YouTube Uploader</title>
   <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-datetimepicker/2.5.20/jquery.datetimepicker.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-datetimepicker/2.5.20/jquery.datetimepicker.full.min.js"></script>
+
   <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
   <style>
     body {
@@ -66,12 +69,11 @@
     .video-form-section video {
       width: 30vw; /* 30% of the viewport width */
       height: 30vh; /* 30% of the viewport height */
-      height: auto; /* Maintain aspect ratio */
       margin-top: 10px;
       object-fit: cover; /* Ensures the video fits within the box */
     }
     .delete-btn {
-      position: absolute;
+      position: relative;
       top: 10px;
       right: 10px;
       background-color: red;
@@ -84,11 +86,22 @@
   </style>
 </head>
 <body>
-  <h1>Upload Video to YouTube</h1>
+    <h1>Upload Video to YouTube</h1>
   <a href="/auth">Authenticate with YouTube</a>
   <form id="upload-form" enctype="multipart/form-data" method="POST">
     <input type="hidden" name="access_token" id="access_token">
     <input type="file" id="video-input" name="videos" accept="video/*" multiple required><br>
+
+    <div id="bulk-inputs">
+      <h2>Bulk Input</h2>
+      <input type="text" id="bulk-title" placeholder="Title"><br>
+      <textarea id="bulk-description" placeholder="Description"></textarea><br>
+      <input type="text" id="bulk-tags" placeholder="Tags (comma separated)"><br>
+      <input type="text" id="bulk-start-date" placeholder="Start Date"><br>
+      <input type="text" id="bulk-end-date" placeholder="End Date"><br>
+      <button type="button" id="apply-bulk">Apply</button>
+    </div>
+
     <div id="video-forms-container"></div>
     <button type="submit">Upload</button>
     <div class="loader" id="loader" style="display:none;">Uploading...</div>
@@ -96,10 +109,28 @@
 
   <script>
     $(function() {
-      $(document).on('focus', '.publishAt', function() {
-        $(this).datepicker({
-          dateFormat: "yy-mm-dd",
-          minDate: 0 // Prevent selecting past dates
+      $('.publishAt, #bulk-start-date, #bulk-end-date').datetimepicker({
+        format: 'Y-m-d H:i',
+        minDate: 0 // Prevent selecting past dates
+      });
+
+      $('#apply-bulk').on('click', function() {
+        const bulkTitle = $('#bulk-title').val();
+        const bulkDescription = $('#bulk-description').val();
+        const bulkTags = $('#bulk-tags').val();
+        const bulkStartDate = new Date($('#bulk-start-date').val());
+        const bulkEndDate = new Date($('#bulk-end-date').val());
+
+        const timeDiff = (bulkEndDate - bulkStartDate) / $('#video-forms-container .video-form-section').length;
+
+        $('#video-forms-container .video-form-section').each(function(index) {
+          $(this).find('input[name^="title_"]').val(bulkTitle);
+          $(this).find('textarea[name^="description_"]').val(bulkDescription);
+          $(this).find('input[name^="tags_"]').val(bulkTags);
+
+          const newDate = new Date(bulkStartDate.getTime() + timeDiff * index);
+          const formattedDate = newDate.toISOString().slice(0, 16).replace('T', ' ');
+          $(this).find('input[name^="publishAt_"]').val(formattedDate);
         });
       });
     });
@@ -112,7 +143,7 @@
     }
 
     const form = document.getElementById('upload-form');
-    const button = form.querySelector('button');
+    const button = form.querySelector('button[type="submit"]');
     const loader = document.getElementById('loader');
     const videoInput = document.getElementById('video-input');
     const videoFormsContainer = document.getElementById('video-forms-container');
@@ -154,6 +185,12 @@
         descriptionTextarea.required = true;
         formSection.appendChild(descriptionTextarea);
 
+        const tagsInput = document.createElement('input');
+        tagsInput.type = 'text';
+        tagsInput.name = `tags_${index}`;
+        tagsInput.placeholder = 'Tags (comma separated)';
+        formSection.appendChild(tagsInput);
+
         const publishAtInput = document.createElement('input');
         publishAtInput.type = 'text';
         publishAtInput.name = `publishAt_${index}`;
@@ -169,7 +206,6 @@
           const newFile = event.target.files[0];
           videoPreview.src = URL.createObjectURL(newFile);
         });
-
         const changeVideoButton = document.createElement('button');
         changeVideoButton.type = 'button';
         changeVideoButton.textContent = 'Change Video';
@@ -182,6 +218,7 @@
         videoFormsContainer.appendChild(formSection);
       });
     });
+
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       button.disabled = true;

@@ -71,6 +71,9 @@ app.post(
       const uploadPromises = files.map(async (file, index) => {
         const title = req.body[`title_${index}`];
         const description = req.body[`description_${index}`];
+        const tags = req.body[`tags_${index}`]
+          ?.split(',')
+          .map((tag: string) => tag.trim());
         const publishAt = req.body[`publishAt_${index}`];
 
         const fileExtension = path.extname(file.originalname).toLowerCase();
@@ -82,6 +85,8 @@ app.post(
           snippet: {
             title,
             description,
+            tags,
+            categoryId: '10', // Default category to Music
           },
           status: {
             privacyStatus: 'private', // Set to private initially if scheduling
