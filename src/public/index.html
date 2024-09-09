@@ -88,6 +88,15 @@
 <body>
     <h1>Upload Video to YouTube</h1>
   <a href="/auth">Authenticate with YouTube</a>
+  <br />
+  <form id="stats-form">
+    <input type="hidden" id="access_token_stats" value="">
+    <input type="text" id="video-id" placeholder="Enter Video ID" required><br>
+    <button type="submit">Get Video Stats</button>
+  </form>
+
+  <div id="video-stats"></div>
+
   <form id="upload-form" enctype="multipart/form-data" method="POST">
     <input type="hidden" name="access_token" id="access_token">
     <input type="file" id="video-input" name="videos" accept="video/*" multiple required><br>
@@ -247,4 +256,45 @@
     });
   </script>
 </body>
+<script>
+  // Set the access token if available in the URL
+  const accessToken2 = urlParams.get('access_token');
+  if (accessToken2) {
+    document.getElementById('access_token').value = accessToken2;
+    document.getElementById('access_token_stats').value = accessToken2;
+  }
+
+  document.getElementById('stats-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const videoId = document.getElementById('video-id').value;
+    const accessToken2 = document.getElementById('access_token_stats').value;
+
+    try {
+      const response = await fetch(`/video-stats/${videoId}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken2}`
+        }
+      });
+      const result = await response.json();
+      if (response.ok) {
+        document.getElementById('video-stats').innerHTML = `
+          <h2>Video Stats</h2>
+          <p><strong>Title:</strong> ${result.title}</p>
+          <p><strong>Description:</strong> ${result.description}</p>
+          <p><strong>Tags:</strong> ${result.tags.join(', ')}</p>
+          <p><strong>Views:</strong> ${result.views}</p>
+          <p><strong>Likes:</strong> ${result.likes}</p>
+          <p><strong>Comments:</strong> ${result.comments}</p>
+          <p><strong>Engagement Rate:</strong> ${result.engagementRate.toFixed(2)}%</p>
+        `;
+      } else {
+        alert(`Failed to fetch video stats: ${result.error}`);
+      }
+    } catch (error) {
+      alert(`An error occurred: ${error.message}`);
+    }
+  });
+</script>
+
 </html>

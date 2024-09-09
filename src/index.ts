@@ -8,7 +8,7 @@ import path from 'path';
 dotenv.config();
 
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
 
 // Set up multer for file upload
 const upload = multer({ dest: 'uploads/' });
@@ -30,7 +30,10 @@ const validVideoExtensions = ['.mp4', '.mov', '.avi', '.mkv', '.flv', '.wmv'];
 app.get('/auth', (req: Request, res: Response) => {
   const authUrl = oauth2Client.generateAuthUrl({
     access_type: 'offline',
-    scope: ['https://www.googleapis.com/auth/youtube.upload'],
+    scope: [
+      'https://www.googleapis.com/auth/youtube.upload',
+      'https://www.googleapis.com/auth/youtube.readonly',
+    ],
   });
   res.redirect(authUrl);
 });
@@ -120,6 +123,59 @@ app.post(
     }
   }
 );
+
+app.get('/video-stats/:videoId', async (req: Request, res: Response) => {
+  try {
+    const { videoId } = req.params;
+    const accessToken = req.headers.authorization?.split(' ')[1];
+    if (!accessToken) {
+      return res.status(401).json({ error: 'Access token is missing' });
+    }
+
+    // Set the access token in the OAuth2 client
+    oauth2Client.setCredentials({ access_token: accessToken });
+
+    // Create a new YouTube client with the authenticated OAuth2 client
+    const youtube = google.youtube({
+      version: 'v3',
+      auth: oauth2Client,
+    });
+
+    // Fetch video statistics
+    const response = await youtube.videos.list({
+      part: ['snippet', 'statistics'],
+      id: [videoId],
+    });
+
+    if (response.data.items && response.data.items.length > 0) {
+      const video = response.data.items[0];
+      res.status(200).json({
+        title: video.snippet?.title,
+        description: video.snippet?.description,
+        tags: video.snippet?.tags,
+        views: video.statistics?.viewCount,
+        likes: video.statistics?.likeCount,
+        comments: video.statistics?.commentCount,
+        engagementRate: calculateEngagementRate(video.statistics),
+        stats: video.statistics,
+      });
+    } else {
+      res.status(404).json({ error: 'Video not found' });
+    }
+  } catch (error) {
+    console.error('Error fetching video statistics:', error);
+    res.status(500).json({ error: 'Failed to fetch video statistics' });
+  }
+});
+
+function calculateEngagementRate(statistics: any) {
+  const { likeCount, commentCount, viewCount } = statistics;
+  if (!viewCount || viewCount === '0') return 0;
+  const likes = parseInt(likeCount, 10) || 0;
+  const comments = parseInt(commentCount, 10) || 0;
+  const views = parseInt(viewCount, 10);
+  return ((likes + comments) / views) * 100;
+}
 
 app.use(express.static(path.join(__dirname, 'public')));
 
