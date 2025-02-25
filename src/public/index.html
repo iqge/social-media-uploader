@@ -130,14 +130,24 @@
         const bulkStartDate = new Date($('#bulk-start-date').val());
         const bulkEndDate = new Date($('#bulk-end-date').val());
 
-        const timeDiff = (bulkEndDate - bulkStartDate) / $('#video-forms-container .video-form-section').length;
+        const videoCount = $('#video-forms-container .video-form-section').length;
+        const timeDiff = (bulkEndDate - bulkStartDate) / videoCount;
+
+        // Generate an array of random timestamps within the range
+        const randomTimestamps = Array.from({ length: videoCount }, () => {
+          return bulkStartDate.getTime() + Math.random() * (bulkEndDate - bulkStartDate);
+        });
+
+        // Shuffle the array
+        randomTimestamps.sort(() => Math.random() - 0.5);
 
         $('#video-forms-container .video-form-section').each(function(index) {
           $(this).find('input[name^="title_"]').val(bulkTitle);
           $(this).find('textarea[name^="description_"]').val(bulkDescription);
           $(this).find('input[name^="tags_"]').val(bulkTags);
 
-          const newDate = new Date(bulkStartDate.getTime() + timeDiff * index);
+          // Assign shuffled random date
+          const newDate = new Date(randomTimestamps[index]);
           const formattedDate = newDate.toISOString().slice(0, 16).replace('T', ' ');
           $(this).find('input[name^="publishAt_"]').val(formattedDate);
         });

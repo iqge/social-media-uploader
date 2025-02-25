@@ -8,7 +8,7 @@ import path from 'path';
 dotenv.config();
 
 const app = express();
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 3001;
 
 // Set up multer for file upload
 const upload = multer({ dest: 'uploads/' });
@@ -61,66 +61,72 @@ app.post(
   '/upload',
   upload.array('videos'),
   async (req: Request, res: Response) => {
-    try {
-      const { access_token } = req.body;
-      const files = req.files as Express.Multer.File[];
+    const { access_token } = req.body;
+    const files = req.files as Express.Multer.File[];
 
-      if (!files || files.length === 0) {
-        return res.status(400).json({ error: 'No files uploaded' });
-      }
-
-      oauth2Client.setCredentials({ access_token });
-
-      const uploadPromises = files.map(async (file, index) => {
-        const title = req.body[`title_${index}`];
-        const description = req.body[`description_${index}`];
-        const tags = req.body[`tags_${index}`]
-          ?.split(',')
-          .map((tag: string) => tag.trim());
-        const publishAt = req.body[`publishAt_${index}`];
-
-        const fileExtension = path.extname(file.originalname).toLowerCase();
-        if (!validVideoExtensions.includes(fileExtension)) {
-          throw new Error('Invalid video file extension');
-        }
-
-        const requestBody: any = {
-          snippet: {
-            title,
-            description,
-            tags,
-            categoryId: '10', // Default category to Music
-          },
-          status: {
-            privacyStatus: 'private', // Set to private initially if scheduling
-          },
-        };
-
-        if (publishAt) {
-          requestBody.status.publishAt = new Date(publishAt).toISOString();
-        }
-
-        const response = await youtube.videos.insert({
-          part: ['snippet', 'status'],
-          requestBody,
-          media: {
-            body: fs.createReadStream(file.path),
-          },
-        });
-
-        return response.data;
-      });
-
-      const results = await Promise.all(uploadPromises);
-
-      res.status(200).json({
-        message: 'Videos uploaded successfully',
-        videos: results,
-      });
-    } catch (error) {
-      console.error('Error uploading videos:', error);
-      res.status(500).json({ error: 'Failed to upload videos' });
+    if (!files || files.length === 0) {
+      return res.status(400).json({ error: 'No files uploaded' });
     }
+
+    oauth2Client.setCredentials({ access_token });
+
+    const results: any[] = [];
+    const errors: any[] = [];
+
+    await Promise.all(
+      files.map(async (file, index) => {
+        try {
+          const title = req.body[`title_${index}`];
+          const description = req.body[`description_${index}`];
+          const tags = req.body[`tags_${index}`]
+            ?.split(',')
+            .map((tag: string) => tag.trim());
+          const publishAt = req.body[`publishAt_${index}`];
+
+          const fileExtension = path.extname(file.originalname).toLowerCase();
+          if (!validVideoExtensions.includes(fileExtension)) {
+            throw new Error(
+              `Invalid video file extension: ${file.originalname}`
+            );
+          }
+
+          const requestBody: any = {
+            snippet: {
+              title,
+              description,
+              tags,
+              categoryId: '10', // Default category to Music
+            },
+            status: {
+              privacyStatus: 'private',
+            },
+          };
+
+          if (publishAt) {
+            requestBody.status.publishAt = new Date(publishAt).toISOString();
+          }
+
+          const response = await youtube.videos.insert({
+            part: ['snippet', 'status'],
+            requestBody,
+            media: {
+              body: fs.createReadStream(file.path),
+            },
+          });
+
+          results.push(response.data);
+        } catch (error) {
+          console.error(`Error uploading file ${file.originalname}:`, error);
+          errors.push({ file: file.originalname, error: error.message });
+        }
+      })
+    );
+
+    res.status(200).json({
+      message: 'Upload process completed',
+      uploadedVideos: results,
+      failedUploads: errors,
+    });
   }
 );
 
