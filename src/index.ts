@@ -27,6 +27,58 @@ const youtube = google.youtube({
 
 const validVideoExtensions = ['.mp4', '.mov', '.avi', '.mkv', '.flv', '.wmv'];
 
+async function refreshAccessToken() {
+  if (!process.env.REFRESH_TOKEN) {
+    throw new Error('No refresh token available');
+  }
+
+  oauth2Client.setCredentials({
+    refresh_token: process.env.REFRESH_TOKEN,
+  });
+
+  try {
+    const { credentials } = await oauth2Client.refreshAccessToken();
+    oauth2Client.setCredentials(credentials);
+    console.log(credentials.access_token);
+    return credentials.access_token;
+  } catch (error: Error | any) {
+    if (error.response && error.response.data.error === 'invalid_grant') {
+      console.error(
+        'Refresh token is invalid or expired. Re-authenticate the user.'
+      );
+      throw new Error('Refresh token expired. Re-authenticate the user.');
+    } else {
+      console.error('Error refreshing access token:', error);
+      throw error;
+    }
+  }
+}
+
+const refreshMiddleware = async (req: Request, res: Response, next: any) => {
+  const credentials = oauth2Client.credentials;
+  // Check if the token is expired or about to expire (e.g., within 5 minutes)
+  if (
+    !credentials.expiry_date ||
+    credentials.expiry_date <= Date.now() + 5 * 60 * 1000
+  ) {
+    try {
+      const newAccessToken = await refreshAccessToken();
+      oauth2Client.setCredentials({ access_token: newAccessToken });
+    } catch (error: Error | any) {
+      if (
+        error.message === 'Refresh token expired. Re-authenticate the user.'
+      ) {
+        return res.redirect('/reauth'); // Redirect to re-authenticate
+      } else {
+        return res
+          .status(401)
+          .json({ error: 'Failed to refresh access token' });
+      }
+    }
+  }
+  next();
+};
+
 app.get('/auth', (req: Request, res: Response) => {
   const authUrl = oauth2Client.generateAuthUrl({
     access_type: 'offline',
@@ -43,6 +95,7 @@ app.get('/oauth2callback', async (req: Request, res: Response) => {
   if (typeof code === 'string') {
     const { tokens } = await oauth2Client.getToken(code);
     oauth2Client.setCredentials(tokens);
+    console.log(tokens);
     res.redirect(`/upload-form?access_token=${tokens.access_token}`);
   } else {
     res.status(400).send('Invalid code');
@@ -59,16 +112,13 @@ app.get('/upload-form', (req: Request, res: Response) => {
 
 app.post(
   '/upload',
-  upload.array('videos'),
+  [refreshMiddleware, upload.array('videos')],
   async (req: Request, res: Response) => {
-    const { access_token } = req.body;
     const files = req.files as Express.Multer.File[];
 
     if (!files || files.length === 0) {
       return res.status(400).json({ error: 'No files uploaded' });
     }
-
-    oauth2Client.setCredentials({ access_token });
 
     const results: any[] = [];
     const errors: any[] = [];
@@ -115,7 +165,7 @@ app.post(
           });
 
           results.push(response.data);
-        } catch (error) {
+        } catch (error: Error | any) {
           console.error(`Error uploading file ${file.originalname}:`, error);
           errors.push({ file: file.originalname, error: error.message });
         }
@@ -184,6 +234,9 @@ function calculateEngagementRate(statistics: any) {
 }
 
 app.use(express.static(path.join(__dirname, 'public')));
+
+// Middleware to refresh the access token if expired
+app.use(refreshMiddleware);
 
 app.listen(port, () => {
   console.log(`Server is running at http://localhost:${port}`);
