@@ -31,18 +31,18 @@ To get started with Social Media Uploader, follow these steps:
 
 1. Set up your environment variables. Create a `.env` file in the root directory and add your API keys and other necessary configuration:
     ```plaintext
-    YOUTUBE_API_KEY=your_youtube_api_key
-    FACEBOOK_API_KEY=your_facebook_api_key
-    INSTAGRAM_API_KEY=your_instagram_api_key
-    TWITTER_API_KEY=your_twitter_api_key
-    LINKEDIN_API_KEY=your_linkedin_api_key
-    TIKTOK_API_KEY=your_tiktok_api_key
+        CLIENT_ID=**************-xxxxxxxxxxlyyyyyyyy****.apps.googleusercontent.com
+        CLIENT_SECRET=**************-xxxxxxxxxx_yyyyyyyyLk
+        REDIRECT_URI=http://localhost:3001/oauth2callback
+        REFRESH_TOKEN=1//********-****-************************-************
     ```
 
 2. Run the application:
     ```bash
     npm start
     ```
+
+3. To get REFRESH_TOKEN authenticate and there would be a log in the terminal which outputs the refresh toke, put that refresh_token in evn you need to restart the server for it to reflect.
 
 ## Contributing
 
