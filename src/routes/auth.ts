@@ -22,7 +22,7 @@ router.get('/oauth2callback', async (req, res) => {
     const { tokens } = await oauth2Client.getToken(code);
     oauth2Client.setCredentials(tokens);
 
-    res.redirect(`/upload-form?access_token=${tokens.access_token}`);
+    res.redirect(`/?access_token=${tokens.access_token}`);
   } catch (error: any) {
     console.error('OAuth callback error:', error);
     res.status(400).send(error.message || 'Authentication failed');
