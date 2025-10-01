@@ -42,8 +42,8 @@ export const uploadVideo = async (
     requestBody.status.madeForKids = false;
     requestBody.contentDetails = {
       contentRating: {
-        ytRating: 'ytAgeRestricted'
-      }
+        ytRating: 'ytAgeRestricted',
+      },
     };
   }
 
