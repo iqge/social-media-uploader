@@ -32,6 +32,7 @@ router.post(
             ?.split(',')
             .map((t: string) => t.trim()),
           publishAt: req.body[`publishAt_${index}`] as string | undefined,
+          is18Plus: req.body[`is18Plus_${index}`] === 'on',
           categoryId: '10',
         };
 

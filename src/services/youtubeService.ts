@@ -8,6 +8,7 @@ type VideoMetadata = {
   description?: string;
   tags?: string[];
   publishAt?: string;
+  is18Plus?: boolean;
   categoryId: string;
 };
 
@@ -20,7 +21,7 @@ export const uploadVideo = async (
     throw new Error(`Invalid video file extension: ${file.originalname}`);
   }
 
-  const requestBody = {
+  const requestBody: any = {
     snippet: {
       title: metadata.title,
       description: metadata.description || '',
@@ -29,14 +30,25 @@ export const uploadVideo = async (
     },
     status: {
       privacyStatus: 'private',
+      selfDeclaredMadeForKids: false,
       ...(metadata.publishAt && {
         publishAt: new Date(metadata.publishAt).toISOString(),
       }),
     },
   };
 
+  // Correctly set age restriction
+  if (metadata.is18Plus) {
+    requestBody.status.madeForKids = false;
+    requestBody.contentDetails = {
+      contentRating: {
+        ytRating: 'ytAgeRestricted'
+      }
+    };
+  }
+
   const response = await youtube.videos.insert({
-    part: ['snippet', 'status'],
+    part: ['snippet', 'status', 'contentDetails'],
     requestBody,
     media: {
       body: fs.createReadStream(file.path),
