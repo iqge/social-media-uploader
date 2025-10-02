@@ -286,6 +286,17 @@
       font-size: 1.2em;
     }
 
+    .assigned-title-badge {
+      display: inline-block;
+      background: #d4edda;
+      color: #155724;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 0.85em;
+      margin-left: 10px;
+      font-weight: 600;
+    }
+
     .loader {
       display: none;
       text-align: center;
@@ -357,6 +368,145 @@
       gap: 15px;
     }
 
+    .warning-box {
+      background: #fff3cd;
+      border: 2px solid #ffc107;
+      border-radius: 12px;
+      padding: 20px;
+      margin-top: 20px;
+    }
+
+    .warning-box h3 {
+      color: #856404;
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .warning-box ul {
+      margin: 15px 0;
+      padding-left: 20px;
+    }
+
+    .warning-box li {
+      margin: 8px 0;
+      color: #856404;
+    }
+
+    .video-link {
+      display: inline-block;
+      background: #667eea;
+      color: white;
+      padding: 8px 16px;
+      border-radius: 6px;
+      text-decoration: none;
+      margin: 5px 0;
+      transition: background 0.3s ease;
+    }
+
+    .video-link:hover {
+      background: #5568d3;
+    }
+
+    .age-restriction-note {
+      background: #fff3cd;
+      border-left: 4px solid #ffc107;
+      padding: 15px;
+      margin: 15px 0;
+      border-radius: 4px;
+      font-size: 14px;
+      color: #856404;
+    }
+
+    .preview-btn {
+      background: #6c757d;
+      margin-top: 10px;
+    }
+
+    .preview-btn:hover {
+      background: #5a6268;
+    }
+
+    .preview-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 1000;
+      overflow-y: auto;
+    }
+
+    .preview-modal.active {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .preview-content {
+      background: white;
+      padding: 30px;
+      border-radius: 15px;
+      max-width: 800px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .preview-content h2 {
+      color: #333;
+      margin-bottom: 20px;
+    }
+
+    .preview-item {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      border-left: 4px solid #667eea;
+    }
+
+    .preview-item h4 {
+      color: #667eea;
+      margin-bottom: 10px;
+    }
+
+    .preview-title {
+      font-weight: 700;
+      font-size: 16px;
+      color: #333;
+      margin-bottom: 10px;
+    }
+
+    .preview-description {
+      color: #666;
+      white-space: pre-wrap;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .close-preview {
+      background: #dc3545;
+      margin-top: 20px;
+    }
+
+    .close-preview:hover {
+      background: #c82333;
+    }
+
+    .title-counter {
+      background: #e8f4f8;
+      padding: 10px;
+      border-radius: 6px;
+      margin-top: 5px;
+      font-size: 14px;
+      color: #0c5460;
+    }
+
     @media (max-width: 768px) {
       .time-inputs {
         grid-template-columns: 1fr;
@@ -413,14 +563,23 @@
           <h3>🎯 Bulk Settings (Apply to All Videos)</h3>
 
           <div class="input-group">
-            <label for="bulk-title">Title</label>
-            <input type="text" id="bulk-title" placeholder="Video title">
+            <label for="bulk-title">Titles (one per line - will be randomly assigned)</label>
+            <textarea id="bulk-title" placeholder="Enter one title per line&#10;Each video will get a unique title&#10;Title 1&#10;Title 2&#10;Title 3" rows="4"></textarea>
+            <small style="color: #666; display: block; margin-top: 5px;">
+              💡 Enter multiple titles (one per line). Each video will randomly get one unique title.
+            </small>
+            <div id="title-counter" class="title-counter" style="display: none;"></div>
           </div>
 
           <div class="input-group">
             <label for="bulk-description">Description</label>
-            <textarea id="bulk-description" placeholder="Video description"></textarea>
+            <textarea id="bulk-description" placeholder="Video description (the selected title will be automatically prefixed)"></textarea>
+            <small style="color: #666; display: block; margin-top: 5px;">
+              💡 The title will be automatically added at the top with 2 empty lines before this description.
+            </small>
           </div>
+
+          <button type="button" id="preview-bulk" class="btn preview-btn">👁️ Preview Title/Description Format</button>
 
           <div class="input-group">
             <label for="bulk-tags">Tags (comma separated)</label>
@@ -470,6 +629,10 @@
             <label for="bulk-is-18-plus">🔞 Mark as 18+ (Age Restricted)</label>
           </div>
 
+          <div class="age-restriction-note">
+            ⚠️ <strong>Important:</strong> YouTube API does not support automatic age restriction. Videos marked as 18+ will need manual age restriction in YouTube Studio after upload. Links will be provided.
+          </div>
+
           <button type="button" id="apply-bulk" class="btn">✨ Apply to All Videos</button>
         </div>
 
@@ -487,12 +650,82 @@
     </div>
   </div>
 
+  <!-- Preview Modal -->
+  <div id="preview-modal" class="preview-modal">
+    <div class="preview-content">
+      <h2>📋 Title & Description Preview</h2>
+      <div id="preview-items"></div>
+      <button type="button" id="close-preview" class="btn close-preview">Close Preview</button>
+    </div>
+  </div>
+
   <script>
     // Set minimum date for datetime inputs to now
     const now = new Date();
     now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
     document.getElementById('bulk-start-date').min = now.toISOString().slice(0, 16);
     document.getElementById('bulk-end-date').min = now.toISOString().slice(0, 16);
+
+    // Title counter
+    document.getElementById('bulk-title').addEventListener('input', function() {
+      const titles = this.value.split('\n').filter(t => t.trim().length > 0);
+      const counter = document.getElementById('title-counter');
+
+      if (titles.length > 0) {
+        counter.style.display = 'block';
+        counter.textContent = `📝 ${titles.length} title(s) entered`;
+      } else {
+        counter.style.display = 'none';
+      }
+    });
+
+    // Preview functionality
+    document.getElementById('preview-bulk').addEventListener('click', function() {
+      const bulkTitleText = document.getElementById('bulk-title').value;
+      const bulkDescription = document.getElementById('bulk-description').value;
+
+      const bulkTitles = bulkTitleText
+        .split('\n')
+        .map(t => t.trim())
+        .filter(t => t.length > 0);
+
+      if (bulkTitles.length === 0) {
+        alert('⚠️ Please enter at least one title to preview');
+        return;
+      }
+
+      const previewItems = document.getElementById('preview-items');
+      previewItems.innerHTML = '';
+
+      bulkTitles.forEach((title, index) => {
+        const formattedDescription = bulkDescription
+          ? `${title}\n\n\n${bulkDescription}`
+          : `${title}\n\n\n`;
+
+        const item = document.createElement('div');
+        item.className = 'preview-item';
+        item.innerHTML = `
+          <h4>Sample ${index + 1}</h4>
+          <div class="preview-title">Title: ${title}</div>
+          <div style="font-weight: 600; margin: 10px 0;">Description:</div>
+          <div class="preview-description">${formattedDescription}</div>
+        `;
+        previewItems.appendChild(item);
+      });
+
+      document.getElementById('preview-modal').classList.add('active');
+    });
+
+    document.getElementById('close-preview').addEventListener('click', function() {
+      document.getElementById('preview-modal').classList.remove('active');
+    });
+
+    // Close modal on background click
+    document.getElementById('preview-modal').addEventListener('click', function(e) {
+      if (e.target === this) {
+        this.classList.remove('active');
+      }
+    });
 
     // Show/hide schedule options
     document.getElementById('bulk-start-date').addEventListener('change', toggleScheduleOptions);
@@ -527,7 +760,7 @@
 
     // Apply bulk settings
     document.getElementById('apply-bulk').addEventListener('click', function() {
-      const bulkTitle = document.getElementById('bulk-title').value;
+      const bulkTitleText = document.getElementById('bulk-title').value;
       const bulkDescription = document.getElementById('bulk-description').value;
       const bulkTags = document.getElementById('bulk-tags').value;
       const bulkIs18Plus = document.getElementById('bulk-is-18-plus').checked;
@@ -541,6 +774,31 @@
       const videoCount = videoSections.length;
 
       if (videoCount === 0) return;
+
+      // Parse titles (one per line, filter empty lines)
+      const bulkTitles = bulkTitleText
+        .split('\n')
+        .map(t => t.trim())
+        .filter(t => t.length > 0);
+
+      // Check if we have enough titles
+      if (bulkTitles.length > 0 && bulkTitles.length < videoCount) {
+        if (!confirm(`You have ${bulkTitles.length} titles but ${videoCount} videos. Some titles will be reused. Continue?`)) {
+          return;
+        }
+      }
+
+      // Create a shuffled array of titles (with repetition if needed)
+      let titlePool = [];
+      if (bulkTitles.length > 0) {
+        while (titlePool.length < videoCount) {
+          titlePool = titlePool.concat([...bulkTitles]);
+        }
+        // Shuffle the title pool
+        titlePool.sort(() => Math.random() - 0.5);
+        // Take only what we need
+        titlePool = titlePool.slice(0, videoCount);
+      }
 
       // Generate random timestamps
       const randomTimestamps = [];
@@ -573,18 +831,94 @@
 
       // Apply to each video
       videoSections.forEach((section, index) => {
-        if (bulkTitle) section.querySelector('input[name^="title_"]').value = bulkTitle;
-        if (bulkDescription) section.querySelector('textarea[name^="description_"]').value = bulkDescription;
-        if (bulkTags) section.querySelector('input[name^="tags_"]').value = bulkTags;
-        section.querySelector('input[name^="is18Plus_"]').checked = bulkIs18Plus;
+        // Set unique title
+        if (titlePool.length > 0 && titlePool[index]) {
+          const selectedTitle = titlePool[index];
 
+          // Set ONLY the selected title (not all titles)
+          const titleInput = section.querySelector('input[name^="title_"]');
+          if (titleInput) {
+            titleInput.value = selectedTitle;
+          }
+
+          // Create description with title prefixed (title + 2 empty lines + description)
+          const descriptionTextarea = section.querySelector('textarea[name^="description_"]');
+          if (descriptionTextarea) {
+            if (bulkDescription && bulkDescription.trim()) {
+              const formattedDescription = `${selectedTitle}\n\n\n${bulkDescription}`;
+              descriptionTextarea.value = formattedDescription;
+            } else {
+              // If no description, just use title with empty lines
+              descriptionTextarea.value = `${selectedTitle}\n\n\n`;
+            }
+          }
+        } else if (bulkDescription && bulkDescription.trim()) {
+          // No titles provided, just use description
+          const descriptionTextarea = section.querySelector('textarea[name^="description_"]');
+          if (descriptionTextarea) {
+            descriptionTextarea.value = bulkDescription;
+          }
+        }
+
+        // Apply tags
+        if (bulkTags && bulkTags.trim()) {
+          const tagsInput = section.querySelector('input[name^="tags_"]');
+          if (tagsInput) {
+            tagsInput.value = bulkTags;
+          }
+        }
+
+        // Apply 18+ checkbox
+        const is18PlusCheckbox = section.querySelector('input[name^="is18Plus_"]');
+        if (is18PlusCheckbox) {
+          is18PlusCheckbox.checked = bulkIs18Plus;
+        }
+
+        // Apply publish date
         if (randomTimestamps[index]) {
           const formattedDate = randomTimestamps[index].toISOString().slice(0, 16);
-          section.querySelector('input[name^="publishAt_"]').value = formattedDate;
+          const publishAtInput = section.querySelector('input[name^="publishAt_"]');
+          if (publishAtInput) {
+            publishAtInput.value = formattedDate;
+          }
         }
       });
 
-      alert('✅ Bulk settings applied to all videos!');
+      // Show summary
+      const uniqueTitlesUsed = new Set(titlePool).size;
+      let summaryMessage = `✅ Bulk settings applied!\n\n`;
+
+      if (titlePool.length > 0) {
+        summaryMessage += `📝 ${uniqueTitlesUsed} unique title(s) assigned to ${videoCount} video(s)\n`;
+        summaryMessage += `📄 Each title has been prefixed in the description with 2 empty lines\n\n`;
+        summaryMessage += `Titles used:\n`;
+        titlePool.slice(0, Math.min(5, titlePool.length)).forEach((title, idx) => {
+          summaryMessage += `  ${idx + 1}. ${title}\n`;
+        });
+        if (titlePool.length > 5) {
+          summaryMessage += `  ... and ${titlePool.length - 5} more\n`;
+        }
+      } else {
+        summaryMessage += `📄 Description applied to all videos\n`;
+      }
+
+      if (bulkTags && bulkTags.trim()) {
+        summaryMessage += `\n🏷️ Tags applied`;
+      }
+      if (randomTimestamps.length > 0) {
+        summaryMessage += `\n📅 Publish dates scheduled`;
+      }
+
+      alert(summaryMessage);
+
+      // Log details to console for debugging
+      console.log('Bulk apply completed:', {
+        videoCount,
+        titlesProvided: bulkTitles.length,
+        uniqueTitlesUsed,
+        titlePool,
+        randomTimestamps: randomTimestamps.length
+      });
     });
 
     // Handle file selection
@@ -684,7 +1018,37 @@
         const result = await response.json();
 
         if (response.ok) {
-          alert('✅ Videos uploaded successfully! Check console for details.');
+          let message = '✅ Videos uploaded successfully!';
+          let warningHTML = '';
+
+          // Check if there are videos that need age restriction
+          if (result.warning && result.warning.videos && result.warning.videos.length > 0) {
+            warningHTML = `
+              <div class="warning-box">
+                <h3>⚠️ Manual Action Required</h3>
+                <p><strong>${result.warning.count} video(s) marked as 18+ need age restriction set manually in YouTube Studio.</strong></p>
+                <p>YouTube API does not support automatic age restriction. Please complete these steps:</p>
+                <ul>
+                  ${result.warning.instructions.map(inst => `<li>${inst}</li>`).join('')}
+                </ul>
+                <h4 style="margin-top: 15px;">Videos requiring age restriction:</h4>
+                ${result.warning.videos.map(v => `
+                  <div style="margin: 10px 0; padding: 10px; background: white; border-radius: 6px;">
+                    <strong>${v.title}</strong><br>
+                    Video ID: ${v.videoId}<br>
+                    <a href="${v.editUrl}" target="_blank" class="video-link">Open in YouTube Studio →</a>
+                  </div>
+                `).join('')}
+              </div>
+            `;
+
+            // Create a temporary div to show the warning
+            const warningDiv = document.createElement('div');
+            warningDiv.innerHTML = warningHTML;
+            document.querySelector('.upload-section').appendChild(warningDiv);
+          }
+
+          alert(message);
           console.log(result);
           videoFormsContainer.innerHTML = '';
           videoInput.value = '';
