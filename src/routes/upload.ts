@@ -2,13 +2,27 @@
 import express, { Request, Response } from 'express';
 import { upload } from '../config/multer';
 import { refreshMiddleware } from '../middleware/auth';
-import { uploadVideo } from '../services/youtubeService';
+import { uploadVideo, getScheduledVideos } from '../services/youtubeService';
 import path from 'path';
 
 const router = express.Router();
 
 router.get('/upload-form', (req: Request, res: Response) => {
   res.sendFile(path.join(__dirname, '../../public', 'index.html'));
+});
+
+// Route: Get existing schedule (used by frontend for conflict checking)
+router.get('/existing-schedule', refreshMiddleware, async (req: Request, res: Response) => {
+  try {
+    const scheduledVideos = await getScheduledVideos();
+    res.status(200).json({
+      count: scheduledVideos.length,
+      scheduledDates: scheduledVideos,
+    });
+  } catch (error: any) {
+    console.error('Error fetching schedule:', error);
+    res.status(500).json({ error: error.message });
+  }
 });
 
 router.post(
@@ -23,6 +37,7 @@ router.post(
       return res.status(400).json({ error: 'No files uploaded' });
     }
 
+    // Upload videos with their pre-adjusted times from frontend
     for (const [index, file] of files.entries()) {
       try {
         const metadata = {
