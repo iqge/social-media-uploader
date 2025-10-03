@@ -101,7 +101,7 @@ export const getScheduledVideos = async () => {
 
       if (response.data.items) {
         const videoIds = response.data.items
-          .map(item => item.id?.videoId)
+          .map((item) => item.id?.videoId)
           .filter((id): id is string => !!id);
 
         if (videoIds.length > 0) {
@@ -158,8 +158,10 @@ export const calculateSafePublishTimes = (
 
           // Check against all scheduled dates (existing + newly calculated)
           for (const scheduledDate of allScheduledDates) {
-            const timeDiff = Math.abs(adjustedTime.getTime() - scheduledDate.getTime());
-            
+            const timeDiff = Math.abs(
+              adjustedTime.getTime() - scheduledDate.getTime()
+            );
+
             if (timeDiff < minGapMs) {
               hasConflict = true;
               // Move the time forward past the conflict
@@ -178,7 +180,9 @@ export const calculateSafePublishTimes = (
         }
 
         if (attempts >= maxAttempts) {
-          console.warn(`Could not find conflict-free time for ${requestedTime}, using adjusted time anyway`);
+          console.warn(
+            `Could not find conflict-free time for ${requestedTime}, using adjusted time anyway`
+          );
           safeTimes.push(adjustedTime);
           allScheduledDates.push(adjustedTime);
         }

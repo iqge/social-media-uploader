@@ -12,18 +12,22 @@ router.get('/upload-form', (req: Request, res: Response) => {
 });
 
 // Route: Get existing schedule (used by frontend for conflict checking)
-router.get('/existing-schedule', refreshMiddleware, async (req: Request, res: Response) => {
-  try {
-    const scheduledVideos = await getScheduledVideos();
-    res.status(200).json({
-      count: scheduledVideos.length,
-      scheduledDates: scheduledVideos,
-    });
-  } catch (error: any) {
-    console.error('Error fetching schedule:', error);
-    res.status(500).json({ error: error.message });
+router.get(
+  '/existing-schedule',
+  refreshMiddleware,
+  async (req: Request, res: Response) => {
+    try {
+      const scheduledVideos = await getScheduledVideos();
+      res.status(200).json({
+        count: scheduledVideos.length,
+        scheduledDates: scheduledVideos,
+      });
+    } catch (error: any) {
+      console.error('Error fetching schedule:', error);
+      res.status(500).json({ error: error.message });
+    }
   }
-});
+);
 
 router.post(
   '/upload',
