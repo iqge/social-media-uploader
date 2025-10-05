@@ -89,27 +89,47 @@
       padding-top: 15px;
       border-top: 2px solid #ffc107;
     }
+
+    .smart-schedule-settings {
+      background: #d1ecf1;
+      padding: 20px;
+      border-radius: 12px;
+      margin-bottom: 25px;
+      border: 2px solid #17a2b8;
+    }
+
+    .smart-schedule-settings h3 {
+      color: #0c5460;
+      margin-bottom: 15px;
+    }
+
+    .settings-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-top: 15px;
+    }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>📹 YouTube Uploader Pro</h1>
+    <h1>YouTube Uploader Pro</h1>
 
     <!-- Authentication Section -->
     <div class="auth-section">
-      <a href="/auth" class="auth-btn">🔐 Authenticate with YouTube</a>
+      <a href="/auth" class="auth-btn">Authenticate with YouTube</a>
     </div>
 
     <!-- Existing Schedule Section -->
     <div class="schedule-section">
-      <h2>📅 Existing Schedule</h2>
-      <button id="fetch-schedule-btn" class="btn">🔄 Fetch Current Schedule</button>
+      <h2>Existing Schedule</h2>
+      <button id="fetch-schedule-btn" class="btn">Fetch Current Schedule</button>
       <div id="schedule-display"></div>
     </div>
 
     <!-- Video Stats Section -->
     <div class="stats-section">
-      <h2>📊 Video Statistics</h2>
+      <h2>Video Statistics</h2>
       <form id="stats-form">
         <input type="hidden" id="access_token_stats" value="">
         <div class="input-group">
@@ -123,7 +143,7 @@
 
     <!-- Upload Section -->
     <div class="upload-section">
-      <h2>📤 Upload Videos</h2>
+      <h2>Upload Videos</h2>
       <form id="upload-form" enctype="multipart/form-data" method="POST">
         <input type="hidden" name="access_token" id="access_token">
 
@@ -138,33 +158,45 @@
           </label>
         </div>
 
-        <!-- Schedule Conflict Settings -->
-        <div class="schedule-conflict-settings">
-          <h3>⚙️ Schedule Conflict Prevention</h3>
+        <!-- Smart Schedule Settings -->
+        <div class="smart-schedule-settings">
+          <h3>Smart Scheduling</h3>
           <div class="checkbox-group">
-            <input type="checkbox" id="check-schedule-conflicts" name="checkScheduleConflicts">
-            <label for="check-schedule-conflicts">🔍 Check for scheduling conflicts with existing videos</label>
+            <input type="checkbox" id="enable-smart-schedule" name="enableSmartSchedule">
+            <label for="enable-smart-schedule">Enable intelligent schedule distribution</label>
           </div>
-          <div id="gap-settings" style="display: none;">
-            <div class="input-group">
-              <label for="min-gap-days">Minimum gap between videos (days)</label>
-              <input type="number" id="min-gap-days" name="minGapDays" min="1" max="60" value="1">
-              <small style="color: #666; display: block; margin-top: 5px;">
-                💡 Videos will be automatically rescheduled to maintain this minimum gap from existing scheduled videos
-              </small>
+          <div id="smart-schedule-options" style="display: none;">
+            <div class="settings-grid">
+              <div class="input-group">
+                <label for="min-gap-days">Minimum gap (days)</label>
+                <input type="number" id="min-gap-days" name="minGapDays" min="1" max="30" value="2">
+              </div>
+              <div class="input-group">
+                <label for="max-gap-days">Maximum gap (days)</label>
+                <input type="number" id="max-gap-days" name="maxGapDays" min="2" max="60" value="4">
+              </div>
+              <div class="input-group">
+                <label for="randomness-factor">Randomness %</label>
+                <input type="number" id="randomness-factor" name="randomnessFactor" min="0" max="50" value="20">
+                <small style="color: #666; display: block; margin-top: 5px;">Higher = more variation in gaps</small>
+              </div>
+            </div>
+            <div class="checkbox-group" style="margin-top: 15px;">
+              <input type="checkbox" id="respect-existing" name="respectExisting" checked>
+              <label for="respect-existing">Maintain gap from existing scheduled videos</label>
             </div>
           </div>
         </div>
 
         <!-- Bulk Inputs -->
         <div class="bulk-inputs">
-          <h3>🎯 Bulk Settings (Apply to All Videos)</h3>
+          <h3>Bulk Settings (Apply to All Videos)</h3>
 
           <div class="input-group">
             <label for="bulk-title">Titles (one per line - will be randomly assigned)</label>
             <textarea id="bulk-title" placeholder="Enter one title per line&#10;Each video will get a unique title&#10;Title 1&#10;Title 2&#10;Title 3" rows="4"></textarea>
             <small style="color: #666; display: block; margin-top: 5px;">
-              💡 Enter multiple titles (one per line). Each video will randomly get one unique title.
+              Enter multiple titles (one per line). Each video will randomly get one unique title.
             </small>
             <div id="title-counter" class="title-counter" style="display: none;"></div>
           </div>
@@ -173,11 +205,11 @@
             <label for="bulk-description">Description</label>
             <textarea id="bulk-description" placeholder="Video description (the selected title will be automatically prefixed)"></textarea>
             <small style="color: #666; display: block; margin-top: 5px;">
-              💡 The title will be automatically added at the top with 2 empty lines before this description.
+              The title will be automatically added at the top with 2 empty lines before this description.
             </small>
           </div>
 
-          <button type="button" id="preview-bulk" class="btn preview-btn">👁️ Preview Title/Description Format</button>
+          <button type="button" id="preview-bulk" class="btn preview-btn">Preview Title/Description Format</button>
 
           <div class="input-group">
             <label for="bulk-tags">Tags (comma separated)</label>
@@ -195,7 +227,7 @@
           </div>
 
           <div id="schedule-options" class="schedule-options" style="display: none;">
-            <h4 style="margin-bottom: 10px;">⏰ Schedule Options</h4>
+            <h4 style="margin-bottom: 10px;">Schedule Options</h4>
 
             <div class="input-group">
               <label>Select Days</label>
@@ -224,20 +256,20 @@
 
           <div class="checkbox-group">
             <input type="checkbox" id="bulk-is-18-plus">
-            <label for="bulk-is-18-plus">🔞 Mark as 18+ (Age Restricted)</label>
+            <label for="bulk-is-18-plus">Mark as 18+ (Age Restricted)</label>
           </div>
 
           <div class="age-restriction-note">
-            ⚠️ <strong>Important:</strong> YouTube API does not support automatic age restriction. Videos marked as 18+ will need manual age restriction in YouTube Studio after upload. Links will be provided.
+            <strong>Important:</strong> YouTube API does not support automatic age restriction. Videos marked as 18+ will need manual age restriction in YouTube Studio after upload. Links will be provided.
           </div>
 
-          <button type="button" id="apply-bulk" class="btn">✨ Apply to All Videos</button>
+          <button type="button" id="apply-bulk" class="btn">Apply to All Videos</button>
         </div>
 
         <div id="video-forms-container" class="video-forms-container"></div>
 
         <button type="submit" class="btn" style="width: 100%; margin-top: 20px; padding: 16px;">
-          🚀 Upload All Videos
+          Upload All Videos
         </button>
 
         <div class="loader" id="loader">
@@ -251,683 +283,13 @@
   <!-- Preview Modal -->
   <div id="preview-modal" class="preview-modal">
     <div class="preview-content">
-      <h2>📋 Title & Description Preview</h2>
+      <h2>Title & Description Preview</h2>
       <div id="preview-items"></div>
       <button type="button" id="close-preview" class="btn close-preview">Close Preview</button>
     </div>
   </div>
 
-  <script>
-    // Set minimum date for datetime inputs to now
-    const now = new Date();
-    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-    document.getElementById('bulk-start-date').min = now.toISOString().slice(0, 16);
-    document.getElementById('bulk-end-date').min = now.toISOString().slice(0, 16);
-
-    // Schedule conflict checkbox toggle
-    document.getElementById('check-schedule-conflicts').addEventListener('change', function() {
-      document.getElementById('gap-settings').style.display = this.checked ? 'block' : 'none';
-    });
-
-    // Store existing schedule globally
-    let existingSchedule = [];
-
-    // Fetch existing schedule
-    document.getElementById('fetch-schedule-btn').addEventListener('click', async function() {
-      const btn = this;
-      btn.disabled = true;
-      btn.textContent = '⏳ Fetching...';
-
-      try {
-        const response = await fetch('/existing-schedule');
-        const data = await response.json();
-
-        // Store for conflict checking
-        existingSchedule = data.scheduledDates ? data.scheduledDates.map(d => new Date(d)) : [];
-
-        const display = document.getElementById('schedule-display');
-        if (existingSchedule.length > 0) {
-          display.innerHTML = `
-            <div class="schedule-display">
-              <h4>📅 You have ${data.count} video(s) scheduled</h4>
-              <div class="schedule-list">
-                ${existingSchedule.map((date, i) => `
-                  <div class="schedule-item">
-                    <span class="schedule-number">#${i + 1}</span>
-                    <span class="schedule-date">${date.toLocaleString()}</span>
-                  </div>
-                `).join('')}
-              </div>
-              <div class="schedule-info">
-                💡 Use the conflict prevention feature below to automatically avoid scheduling conflicts
-              </div>
-            </div>
-          `;
-        } else {
-          display.innerHTML = `
-            <div class="schedule-display">
-              <p>✅ No scheduled videos found. You can schedule freely!</p>
-            </div>
-          `;
-        }
-      } catch (error) {
-        alert(`❌ Failed to fetch schedule: ${error.message}`);
-      } finally {
-        btn.disabled = false;
-        btn.textContent = '🔄 Fetch Current Schedule';
-      }
-    });
-
-    // Frontend conflict checking function
-    function checkAndAdjustSchedule(requestedTimes, minGapDays) {
-      const minGapMs = minGapDays * 24 * 60 * 60 * 1000;
-      const allScheduledDates = [...existingSchedule];
-      const adjustedTimes = [];
-      const adjustments = [];
-
-      for (let i = 0; i < requestedTimes.length; i++) {
-        const requestedTime = requestedTimes[i];
-        if (!requestedTime) {
-          adjustedTimes.push(null);
-          continue;
-        }
-
-        let adjustedTime = new Date(requestedTime);
-        let attempts = 0;
-        const maxAttempts = 100;
-        let wasAdjusted = false;
-
-        while (attempts < maxAttempts) {
-          let hasConflict = false;
-
-          // Check against all scheduled dates (existing + newly calculated)
-          for (const scheduledDate of allScheduledDates) {
-            const timeDiff = Math.abs(adjustedTime.getTime() - scheduledDate.getTime());
-
-            if (timeDiff < minGapMs) {
-              hasConflict = true;
-              wasAdjusted = true;
-              // Move forward past the conflict
-              adjustedTime = new Date(scheduledDate.getTime() + minGapMs);
-              break;
-            }
-          }
-
-          if (!hasConflict) {
-            adjustedTimes.push(new Date(adjustedTime));
-            allScheduledDates.push(new Date(adjustedTime));
-
-            if (wasAdjusted) {
-              adjustments.push({
-                index: i,
-                original: new Date(requestedTime),
-                adjusted: new Date(adjustedTime)
-              });
-            }
-            break;
-          }
-
-          attempts++;
-        }
-
-        if (attempts >= maxAttempts) {
-          console.warn(`Could not find conflict-free time for video ${i + 1}`);
-          adjustedTimes.push(adjustedTime);
-          allScheduledDates.push(adjustedTime);
-        }
-      }
-
-      return { adjustedTimes, adjustments };
-    }
-
-    // Add button to check conflicts before applying
-    function addConflictCheckButton() {
-      const bulkInputs = document.querySelector('.bulk-inputs');
-      const existingBtn = document.getElementById('check-conflicts-btn');
-
-      if (!existingBtn) {
-        const checkBtn = document.createElement('button');
-        checkBtn.type = 'button';
-        checkBtn.id = 'check-conflicts-btn';
-        checkBtn.className = 'btn';
-        checkBtn.style.cssText = 'background: #ffc107; color: #000; margin-top: 10px;';
-        checkBtn.textContent = '🔍 Check Schedule Conflicts';
-        checkBtn.addEventListener('click', checkScheduleConflictsInFrontend);
-
-        const applyBtn = document.getElementById('apply-bulk');
-        applyBtn.parentNode.insertBefore(checkBtn, applyBtn);
-      }
-    }
-
-    function checkScheduleConflictsInFrontend() {
-      const checkConflicts = document.getElementById('check-schedule-conflicts').checked;
-
-      if (!checkConflicts) {
-        alert('⚠️ Please enable "Check for scheduling conflicts" first');
-        return;
-      }
-
-      if (existingSchedule.length === 0) {
-        alert('⚠️ Please fetch your existing schedule first by clicking "Fetch Current Schedule"');
-        return;
-      }
-
-      const videoSections = document.querySelectorAll('.video-form-section');
-      if (videoSections.length === 0) {
-        alert('⚠️ Please select videos first');
-        return;
-      }
-
-      const minGapDays = parseInt(document.getElementById('min-gap-days').value, 10);
-      const requestedTimes = [];
-
-      // Collect all publish times
-      videoSections.forEach((section, index) => {
-        const publishInput = section.querySelector('input[name^="publishAt_"]');
-        if (publishInput && publishInput.value) {
-          requestedTimes.push(new Date(publishInput.value));
-        } else {
-          requestedTimes.push(null);
-        }
-      });
-
-      const hasAnySchedule = requestedTimes.some(t => t !== null);
-      if (!hasAnySchedule) {
-        alert('⚠️ No publish dates set. Please set publish dates for your videos first.');
-        return;
-      }
-
-      // Check and adjust
-      const { adjustedTimes, adjustments } = checkAndAdjustSchedule(requestedTimes, minGapDays);
-
-      // Display results
-      if (adjustments.length === 0) {
-        alert('✅ No conflicts found! All your scheduled times are good.');
-        return;
-      }
-
-      // Show detailed conflicts and allow user to accept/reject
-      let message = `⚠️ Found ${adjustments.length} scheduling conflict(s):\n\n`;
-      adjustments.forEach((adj, i) => {
-        message += `Video ${adj.index + 1}:\n`;
-        message += `  Original: ${adj.original.toLocaleString()}\n`;
-        message += `  Suggested: ${adj.adjusted.toLocaleString()}\n\n`;
-      });
-      message += 'Do you want to apply these adjustments?';
-
-      if (confirm(message)) {
-        // Apply adjustments to the form
-        videoSections.forEach((section, index) => {
-          if (adjustedTimes[index]) {
-            const publishInput = section.querySelector('input[name^="publishAt_"]');
-            if (publishInput) {
-              publishInput.value = adjustedTimes[index].toISOString().slice(0, 16);
-
-              // Add visual indicator
-              const indicator = section.querySelector('.conflict-adjusted-badge') || document.createElement('span'); (Explicit)
-              indicator.className = 'conflict-adjusted-badge';
-              indicator.textContent = '✓ Adjusted';
-
-              if (!section.querySelector('.conflict-adjusted-badge')) {
-                publishInput.parentNode.appendChild(indicator);
-              }
-            }
-          }
-        });
-
-        alert(`✅ Applied ${adjustments.length} schedule adjustment(s)!`);
-      }
-    }
-
-    // Show conflict check button when conflicts are enabled
-    document.getElementById('check-schedule-conflicts').addEventListener('change', function() {
-      if (this.checked) {
-        addConflictCheckButton();
-      }
-    });
-
-    // Title counter
-    document.getElementById('bulk-title').addEventListener('input', function() {
-      const titles = this.value.split('\n').filter(t => t.trim().length > 0);
-      const counter = document.getElementById('title-counter');
-
-      if (titles.length > 0) {
-        counter.style.display = 'block';
-        counter.textContent = `📝 ${titles.length} title(s) entered`;
-      } else {
-        counter.style.display = 'none';
-      }
-    });
-
-    // Preview functionality
-    document.getElementById('preview-bulk').addEventListener('click', function() {
-      const bulkTitleText = document.getElementById('bulk-title').value;
-      const bulkDescription = document.getElementById('bulk-description').value;
-
-      const bulkTitles = bulkTitleText
-        .split('\n')
-        .map(t => t.trim())
-        .filter(t => t.length > 0);
-
-      if (bulkTitles.length === 0) {
-        alert('⚠️ Please enter at least one title to preview');
-        return;
-      }
-
-      const previewItems = document.getElementById('preview-items');
-      previewItems.innerHTML = '';
-
-      bulkTitles.forEach((title, index) => {
-        const formattedDescription = bulkDescription
-          ? `${title}\n\n\n${bulkDescription}`
-          : `${title}\n\n\n`;
-
-        const item = document.createElement('div');
-        item.className = 'preview-item';
-        item.innerHTML = `
-          <h4>Sample ${index + 1}</h4>
-          <div class="preview-title">Title: ${title}</div>
-          <div style="font-weight: 600; margin: 10px 0;">Description:</div>
-          <div class="preview-description">${formattedDescription}</div>
-        `;
-        previewItems.appendChild(item);
-      });
-
-      document.getElementById('preview-modal').classList.add('active');
-    });
-
-    document.getElementById('close-preview').addEventListener('click', function() {
-      document.getElementById('preview-modal').classList.remove('active');
-    });
-
-    document.getElementById('preview-modal').addEventListener('click', function(e) {
-      if (e.target === this) {
-        this.classList.remove('active');
-      }
-    });
-
-    // Show/hide schedule options
-    document.getElementById('bulk-start-date').addEventListener('change', toggleScheduleOptions);
-    document.getElementById('bulk-end-date').addEventListener('change', toggleScheduleOptions);
-
-    function toggleScheduleOptions() {
-      const startDate = document.getElementById('bulk-start-date').value;
-      const endDate = document.getElementById('bulk-end-date').value;
-      const scheduleOptions = document.getElementById('schedule-options');
-
-      if (startDate && endDate) {
-        scheduleOptions.style.display = 'block';
-      } else {
-        scheduleOptions.style.display = 'none';
-      }
-    }
-
-    // Day selector
-    const dayButtons = document.querySelectorAll('.day-btn');
-    dayButtons.forEach(btn => {
-      btn.addEventListener('click', function(e) {
-        e.preventDefault();
-        this.classList.toggle('selected');
-      });
-    });
-
-    function getSelectedDays() {
-      return Array.from(document.querySelectorAll('.day-btn.selected'))
-        .map(btn => btn.dataset.day);
-    }
-
-    // Apply bulk settings
-    document.getElementById('apply-bulk').addEventListener('click', function() {
-      const bulkTitleText = document.getElementById('bulk-title').value;
-      const bulkDescription = document.getElementById('bulk-description').value;
-      const bulkTags = document.getElementById('bulk-tags').value;
-      const bulkIs18Plus = document.getElementById('bulk-is-18-plus').checked;
-      const bulkStartDate = new Date(document.getElementById('bulk-start-date').value);
-      const bulkEndDate = new Date(document.getElementById('bulk-end-date').value);
-      const bulkDays = getSelectedDays();
-      const bulkStartTime = document.getElementById('bulk-start-time').value;
-      const bulkEndTime = document.getElementById('bulk-end-time').value;
-
-      const videoSections = document.querySelectorAll('.video-form-section');
-      const videoCount = videoSections.length;
-
-      if (videoCount === 0) return;
-
-      const bulkTitles = bulkTitleText
-        .split('\n')
-        .map(t => t.trim())
-        .filter(t => t.length > 0);
-
-      if (bulkTitles.length > 0 && bulkTitles.length < videoCount) {
-        if (!confirm(`You have ${bulkTitles.length} titles but ${videoCount} videos. Some titles will be reused. Continue?`)) {
-          return;
-        }
-      }
-
-      let titlePool = [];
-      if (bulkTitles.length > 0) {
-        while (titlePool.length < videoCount) {
-          titlePool = titlePool.concat([...bulkTitles]);
-        }
-        titlePool.sort(() => Math.random() - 0.5);
-        titlePool = titlePool.slice(0, videoCount);
-      }
-
-      const randomTimestamps = [];
-      if (bulkDays.length > 0 && bulkStartTime && bulkEndTime) {
-        const startTime = new Date(`1970-01-01T${bulkStartTime}`);
-        const endTime = new Date(`1970-01-01T${bulkEndTime}`);
-
-        for (let i = 0; i < videoCount; i++) {
-          let randomDate;
-          let attempts = 0;
-          do {
-            randomDate = new Date(bulkStartDate.getTime() + Math.random() * (bulkEndDate.getTime() - bulkStartDate.getTime()));
-            attempts++;
-          } while (!bulkDays.includes(randomDate.getDay().toString()) && attempts < 100);
-
-          const randomTime = new Date(startTime.getTime() + Math.random() * (endTime.getTime() - startTime.getTime()));
-          randomDate.setHours(randomTime.getHours());
-          randomDate.setMinutes(randomTime.getMinutes());
-          randomTimestamps.push(randomDate);
-        }
-      } else if (bulkStartDate && bulkEndDate) {
-        for (let i = 0; i < videoCount; i++) {
-          const randomTime = bulkStartDate.getTime() + Math.random() * (bulkEndDate.getTime() - bulkStartDate.getTime());
-          randomTimestamps.push(new Date(randomTime));
-        }
-      }
-
-      randomTimestamps.sort(() => Math.random() - 0.5);
-
-      videoSections.forEach((section, index) => {
-        if (titlePool.length > 0 && titlePool[index]) {
-          const selectedTitle = titlePool[index];
-          const titleInput = section.querySelector('input[name^="title_"]');
-          if (titleInput) {
-            titleInput.value = selectedTitle;
-          }
-
-          const descriptionTextarea = section.querySelector('textarea[name^="description_"]');
-          if (descriptionTextarea) {
-            if (bulkDescription && bulkDescription.trim()) {
-              descriptionTextarea.value = `${selectedTitle}\n\n\n${bulkDescription}`;
-            } else {
-              descriptionTextarea.value = `${selectedTitle}\n\n\n`;
-            }
-          }
-        } else if (bulkDescription && bulkDescription.trim()) {
-          const descriptionTextarea = section.querySelector('textarea[name^="description_"]');
-          if (descriptionTextarea) {
-            descriptionTextarea.value = bulkDescription;
-          }
-        }
-
-        if (bulkTags && bulkTags.trim()) {
-          const tagsInput = section.querySelector('input[name^="tags_"]');
-          if (tagsInput) {
-            tagsInput.value = bulkTags;
-          }
-        }
-
-        const is18PlusCheckbox = section.querySelector('input[name^="is18Plus_"]');
-        if (is18PlusCheckbox) {
-          is18PlusCheckbox.checked = bulkIs18Plus;
-        }
-
-        if (randomTimestamps[index]) {
-          const formattedDate = randomTimestamps[index].toISOString().slice(0, 16);
-          const publishAtInput = section.querySelector('input[name^="publishAt_"]');
-          if (publishAtInput) {
-            publishAtInput.value = formattedDate;
-          }
-        }
-      });
-
-      const uniqueTitlesUsed = new Set(titlePool).size;
-      let summaryMessage = `✅ Bulk settings applied!\n\n`;
-
-      if (titlePool.length > 0) {
-        summaryMessage += `📝 ${uniqueTitlesUsed} unique title(s) assigned to ${videoCount} video(s)\n`;
-        summaryMessage += `📄 Each title has been prefixed in the description with 2 empty lines\n\n`;
-        summaryMessage += `Titles used:\n`;
-        titlePool.slice(0, Math.min(5, titlePool.length)).forEach((title, idx) => {
-          summaryMessage += `  ${idx + 1}. ${title}\n`;
-        });
-        if (titlePool.length > 5) {
-          summaryMessage += `  ... and ${titlePool.length - 5} more\n`;
-        }
-      } else {
-        summaryMessage += `Description applied to all videos\n`;
-      }
-
-      if (bulkTags && bulkTags.trim()) {
-        summaryMessage += `\nTags applied`;
-      }
-      if (randomTimestamps.length > 0) {
-        summaryMessage += `\nPublish dates scheduled`;
-      }
-
-      alert(summaryMessage);
-
-      console.log('Bulk apply completed:', {
-        videoCount,
-        titlesProvided: bulkTitles.length,
-        uniqueTitlesUsed,
-        titlePool,
-        randomTimestamps: randomTimestamps.length
-      });
-    });
-
-    // Handle file selection
-    const videoInput = document.getElementById('video-input');
-    const videoFormsContainer = document.getElementById('video-forms-container');
-
-    videoInput.addEventListener('change', (e) => {
-      videoFormsContainer.innerHTML = '';
-      const files = e.target.files;
-
-      Array.from(files).forEach((file, index) => {
-        const formSection = document.createElement('div');
-        formSection.classList.add('video-form-section');
-
-        formSection.innerHTML = `
-          <div class="video-header">
-            <div class="video-number">Video ${index + 1}</div>
-            <button type="button" class="btn btn-danger delete-btn">Delete</button>
-          </div>
-
-          <video class="video-preview" controls>
-            <source src="${URL.createObjectURL(file)}" type="${file.type}">
-          </video>
-
-          <div class="input-group">
-            <label>Title *</label>
-            <input type="text" name="title_${index}" placeholder="Enter video title" required>
-          </div>
-
-          <div class="input-group">
-            <label>Description *</label>
-            <textarea name="description_${index}" placeholder="Enter video description" required></textarea>
-          </div>
-
-          <div class="input-group">
-            <label>Tags</label>
-            <input type="text" name="tags_${index}" placeholder="tag1, tag2, tag3">
-          </div>
-
-          <div class="input-group">
-            <label>Publish Date & Time (optional)</label>
-            <input type="datetime-local" name="publishAt_${index}" min="${now.toISOString().slice(0, 16)}">
-          </div>
-
-          <div class="checkbox-group">
-            <input type="checkbox" name="is18Plus_${index}" id="is18Plus_${index}">
-            <label for="is18Plus_${index}">Mark as 18+ (Age Restricted)</label>
-          </div>
-
-          <button type="button" class="btn btn-secondary change-video-btn">Change Video</button>
-          <input type="file" accept="video/*" style="display: none;" class="change-video-input">
-        `;
-
-        formSection.querySelector('.delete-btn').addEventListener('click', () => {
-          formSection.remove();
-          if (videoFormsContainer.children.length === 0) {
-            videoInput.value = '';
-          }
-        });
-
-        const changeBtn = formSection.querySelector('.change-video-btn');
-        const changeInput = formSection.querySelector('.change-video-input');
-        changeBtn.addEventListener('click', () => changeInput.click());
-        changeInput.addEventListener('change', (event) => {
-          const newFile = event.target.files[0];
-          if (newFile) {
-            const videoPreview = formSection.querySelector('.video-preview');
-            videoPreview.src = URL.createObjectURL(newFile);
-          }
-        });
-
-        videoFormsContainer.appendChild(formSection);
-      });
-    });
-
-    // Handle form submission
-    const form = document.getElementById('upload-form');
-    const loader = document.getElementById('loader');
-
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-
-      const submitBtn = form.querySelector('button[type="submit"]');
-      submitBtn.disabled = true;
-      loader.classList.add('active');
-
-      const formData = new FormData(form);
-
-      // Add schedule conflict settings
-      const checkConflicts = document.getElementById('check-schedule-conflicts').checked;
-      formData.append('checkScheduleConflicts', checkConflicts.toString());
-      if (checkConflicts) {
-        formData.append('minGapDays', document.getElementById('min-gap-days').value);
-      }
-
-      try {
-        const response = await fetch('/upload', {
-          method: 'POST',
-          body: formData,
-        });
-
-        const result = await response.json();
-
-        if (response.ok) {
-          let message = 'Videos uploaded successfully!';
-
-          // Show schedule adjustments if any
-          if (result.scheduleAdjustments && result.scheduleAdjustments.adjustedCount > 0) {
-            message += `\n\n${result.scheduleAdjustments.adjustedCount} video(s) were rescheduled to maintain ${result.scheduleAdjustments.minGapDays} day(s) gap from existing videos.`;
-          }
-
-          let warningHTML = '';
-
-          if (result.warning && result.warning.videos && result.warning.videos.length > 0) {
-            warningHTML = `
-              <div class="warning-box">
-                <h3>Manual Action Required</h3>
-                <p><strong>${result.warning.count} video(s) marked as 18+ need age restriction set manually in YouTube Studio.</strong></p>
-                <p>YouTube API does not support automatic age restriction. Please complete these steps:</p>
-                <ul>
-                  ${result.warning.instructions.map(inst => `<li>${inst}</li>`).join('')}
-                </ul>
-                <h4 style="margin-top: 15px;">Videos requiring age restriction:</h4>
-                ${result.warning.videos.map(v => `
-                  <div style="margin: 10px 0; padding: 10px; background: white; border-radius: 6px;">
-                    <strong>${v.title}</strong><br>
-                    Video ID: ${v.videoId}<br>
-                    <a href="${v.editUrl}" target="_blank" class="video-link">Open in YouTube Studio</a>
-                  </div>
-                `).join('')}
-              </div>
-            `;
-
-            const warningDiv = document.createElement('div');
-            warningDiv.innerHTML = warningHTML;
-            document.querySelector('.upload-section').appendChild(warningDiv);
-          }
-
-          alert(message);
-          console.log(result);
-          videoFormsContainer.innerHTML = '';
-          videoInput.value = '';
-        } else {
-          alert(`Failed to upload videos: ${result.error}`);
-        }
-      } catch (error) {
-        alert(`An error occurred: ${error.message}`);
-      } finally {
-        submitBtn.disabled = false;
-        loader.classList.remove('active');
-      }
-    });
-
-    // Video Stats
-    const urlParams = new URLSearchParams(window.location.search);
-    const accessToken = urlParams.get('access_token');
-
-    if (accessToken) {
-      document.getElementById('access_token').value = accessToken;
-      document.getElementById('access_token_stats').value = accessToken;
-    }
-
-    document.getElementById('stats-form').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const videoId = document.getElementById('video-id').value;
-      const token = document.getElementById('access_token_stats').value;
-
-      try {
-        const response = await fetch(`/video-stats/${videoId}`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-
-        const result = await response.json();
-
-        if (response.ok) {
-          document.getElementById('video-stats').innerHTML = `
-            <div class="stats-display">
-              <h3>${result.title || 'N/A'}</h3> (Explicit)
-              <div class="stats-grid">
-                <div class="stat-item">
-                  <div class="stat-label">Views</div>
-                  <div class="stat-value">${result.views || 0}</div> (Explicit)
-                </div>
-                <div class="stat-item">
-                  <div class="stat-label">Likes</div>
-                  <div class="stat-value">${result.likes || 0}</div> (Explicit)
-                </div>
-                <div class="stat-item">
-                  <div class="stat-label">Comments</div>
-                  <div class="stat-value">${result.comments || 0}</div> (Explicit)
-                </div>
-                <div class="stat-item">
-                  <div class="stat-label">Engagement Rate</div>
-                  <div class="stat-value">${result.engagementRate?.toFixed(2) || 0}%</div> (Explicit)
-                </div>
-              </div>
-              <div style="margin-top: 15px;">
-                <strong>Tags:</strong> ${result.tags?.join(', ') || 'None'} (Explicit)
-              </div>
-            </div>
-          `;
-        } else {
-          alert(`Failed to fetch video stats: ${result.error}`);
-        }
-      } catch (error) {
-        alert(`An error occurred: ${error.message}`);
-      }
-    });
-  </script>
+  <script src="scheduling-logic.js"></script>
+  <script src="main.js"></script>
 </body>
 </html>

@@ -2,6 +2,7 @@ import { youtube } from '../config/google';
 import { validVideoExtensions } from '../config/multer';
 import fs from 'fs';
 import path from 'path';
+import logger from '../utils/logger';
 
 type VideoMetadata = {
   title: string;
@@ -16,8 +17,11 @@ export const uploadVideo = async (
   file: Express.Multer.File,
   metadata: VideoMetadata
 ) => {
+  logger.info(`Uploading video: ${file.originalname}`);
+  logger.info('Video metadata:', metadata);
   const fileExtension = path.extname(file.originalname).toLowerCase();
   if (!validVideoExtensions.includes(fileExtension)) {
+    logger.error(`Invalid video file extension: ${file.originalname}`);
     throw new Error(`Invalid video file extension: ${file.originalname}`);
   }
 
@@ -55,26 +59,31 @@ export const uploadVideo = async (
     },
   });
 
+  logger.info(`Successfully uploaded video: ${file.originalname}`);
   return response.data;
 };
 
 export const getVideoStats = async (videoId: string) => {
+  logger.info(`Fetching video stats for video ID: ${videoId}`);
   const response = await youtube.videos.list({
     part: ['snippet', 'statistics'],
     id: [videoId],
   });
 
   if (!response.data.items?.length) {
+    logger.error(`Video not found: ${videoId}`);
     const error = new Error('Video not found');
     (error as any).code = 404;
     throw error;
   }
 
+  logger.info(`Successfully fetched video stats for video ID: ${videoId}`);
   return response.data.items[0];
 };
 
 // Function: Get all scheduled videos from the channel (for frontend conflict checking)
 export const getScheduledVideos = async () => {
+  logger.info('Fetching scheduled videos.');
   const scheduledVideos: Date[] = [];
   let pageToken: string | undefined = undefined;
 
@@ -86,8 +95,10 @@ export const getScheduledVideos = async () => {
     });
 
     if (!channelResponse.data.items?.length) {
+      logger.error('No channel found for authenticated user.');
       throw new Error('No channel found for authenticated user');
     }
+    logger.info('Successfully fetched channel ID.');
 
     // Fetch all videos from the channel
     do {
@@ -128,10 +139,11 @@ export const getScheduledVideos = async () => {
       pageToken = response.data.nextPageToken || undefined;
     } while (pageToken);
 
+    logger.info(`Found ${scheduledVideos.length} scheduled videos.`);
     // Sort dates in ascending order
     return scheduledVideos.sort((a, b) => a.getTime() - b.getTime());
   } catch (error: any) {
-    console.error('Error fetching scheduled videos:', error);
+    logger.error('Error fetching scheduled videos:', error.message);
     throw new Error(`Failed to fetch scheduled videos: ${error.message}`);
   }
 };
@@ -142,8 +154,11 @@ export const calculateSafePublishTimes = (
   minGapDays: number = 1
 ): Promise<Date[]> => {
   return new Promise(async (resolve, reject) => {
+    logger.info('Calculating safe publish times.');
+    logger.info('Requested times:', requestedTimes);
     try {
       const existingSchedule = await getScheduledVideos();
+      logger.info('Existing schedule:', existingSchedule);
       const allScheduledDates = [...existingSchedule];
       const safeTimes: Date[] = [];
       const minGapMs = minGapDays * 24 * 60 * 60 * 1000;
@@ -164,6 +179,9 @@ export const calculateSafePublishTimes = (
 
             if (timeDiff < minGapMs) {
               hasConflict = true;
+              logger.warn(
+                `Conflict found for ${requestedTime}. Adjusting time.`
+              );
               // Move the time forward past the conflict
               adjustedTime = new Date(scheduledDate.getTime() + minGapMs);
               break;
@@ -180,7 +198,7 @@ export const calculateSafePublishTimes = (
         }
 
         if (attempts >= maxAttempts) {
-          console.warn(
+          logger.warn(
             `Could not find conflict-free time for ${requestedTime}, using adjusted time anyway`
           );
           safeTimes.push(adjustedTime);
@@ -188,8 +206,10 @@ export const calculateSafePublishTimes = (
         }
       }
 
+      logger.info('Calculated safe times:', safeTimes);
       resolve(safeTimes);
     } catch (error) {
+      logger.error('Error calculating safe publish times:', error);
       reject(error);
     }
   });
