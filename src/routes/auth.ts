@@ -38,7 +38,9 @@ router.get('/oauth2callback', async (req, res) => {
       console.log(tokens.refresh_token);
       console.log('=================================\n');
     } else {
-      logger.warn('No refresh token received. You may need to revoke access and re-authenticate.');
+      logger.warn(
+        'No refresh token received. You may need to revoke access and re-authenticate.'
+      );
     }
 
     res.redirect(`/?access_token=${tokens.access_token}`);

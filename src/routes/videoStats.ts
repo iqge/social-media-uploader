@@ -7,7 +7,9 @@ import logger from '../utils/logger';
 const router = express.Router();
 
 router.get('/video-stats/:videoId', async (req, res) => {
-  logger.info(`Request to fetch video stats for video ID: ${req.params.videoId}`);
+  logger.info(
+    `Request to fetch video stats for video ID: ${req.params.videoId}`
+  );
   try {
     const { videoId } = req.params;
     const accessToken = req.headers.authorization?.split(' ')[1];
@@ -32,7 +34,10 @@ router.get('/video-stats/:videoId', async (req, res) => {
       stats: video.statistics,
     });
   } catch (error: any) {
-    logger.error(`Error fetching video statistics for video ID: ${req.params.videoId}`, error.message);
+    logger.error(
+      `Error fetching video statistics for video ID: ${req.params.videoId}`,
+      error.message
+    );
     const status = error.code === 404 ? 404 : 500;
     res.status(status).json({
       error: error.message || 'Failed to fetch video statistics',

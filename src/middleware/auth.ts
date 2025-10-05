@@ -13,7 +13,7 @@ export const refreshMiddleware = async (
   if (!credentials || !credentials.access_token) {
     return res.status(401).json({
       error: 'Not authenticated. Please authenticate first.',
-      redirectTo: '/auth'
+      redirectTo: '/auth',
     });
   }
 
@@ -27,7 +27,7 @@ export const refreshMiddleware = async (
       const newAccessToken = await refreshAccessToken();
       oauth2Client.setCredentials({
         access_token: newAccessToken,
-        refresh_token: process.env.REFRESH_TOKEN
+        refresh_token: process.env.REFRESH_TOKEN,
       });
       console.log('Access token refreshed successfully');
     } catch (error: any) {
@@ -35,12 +35,12 @@ export const refreshMiddleware = async (
       if (error.message.includes('Refresh token expired')) {
         return res.status(401).json({
           error: 'Session expired. Please re-authenticate.',
-          redirectTo: '/auth'
+          redirectTo: '/auth',
         });
       }
       return res.status(401).json({
         error: 'Failed to refresh access token',
-        details: error.message
+        details: error.message,
       });
     }
   }

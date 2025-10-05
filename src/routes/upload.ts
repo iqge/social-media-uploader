@@ -50,7 +50,9 @@ router.post(
     // Upload videos with their pre-calculated times from frontend
     for (const [index, file] of files.entries()) {
       try {
-        logger.info(`Processing file ${index + 1} of ${files.length}: ${file.originalname}`);
+        logger.info(
+          `Processing file ${index + 1} of ${files.length}: ${file.originalname}`
+        );
         const metadata = {
           title: req.body[`title_${index}`] as string,
           description: req.body[`description_${index}`] as string | undefined,
@@ -75,7 +77,10 @@ router.post(
           });
         }
       } catch (error: any) {
-        logger.error(`Error uploading file ${file.originalname}:`, error.message);
+        logger.error(
+          `Error uploading file ${file.originalname}:`,
+          error.message
+        );
         errors.push({
           file: file.originalname,
           error: error.message,
