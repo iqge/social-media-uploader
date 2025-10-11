@@ -2,7 +2,11 @@
 import express, { Request, Response } from 'express';
 import { upload } from '../config/multer';
 import { refreshMiddleware } from '../middleware/auth';
-import { uploadVideo, getScheduledVideos, clearScheduleCache } from '../services/youtubeService';
+import {
+  uploadVideo,
+  getScheduledVideos,
+  clearScheduleCache,
+} from '../services/youtubeService';
 import path from 'path';
 import { oauth2Client } from '../config/google';
 
@@ -90,7 +94,9 @@ router.post(
         const response = await uploadVideo(file, metadata);
         results.push(response);
 
-        console.log(`Video ${index + 1} uploaded successfully. ID: ${response.id}`);
+        console.log(
+          `Video ${index + 1} uploaded successfully. ID: ${response.id}`
+        );
 
         // Track 18+ videos for manual age restriction warning
         if (metadata.is18Plus && response.id) {
@@ -134,7 +140,9 @@ router.post(
     }
 
     // Note: Cache is automatically cleared after each upload in uploadVideo()
-    console.log(`Upload complete. Success: ${results.length}, Failed: ${errors.length}`);
+    console.log(
+      `Upload complete. Success: ${results.length}, Failed: ${errors.length}`
+    );
 
     res.status(200).json(responseData);
   }

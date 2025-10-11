@@ -22,7 +22,10 @@ export const refreshMiddleware = async (
   });
 
   // Check if we have refresh token in env but not in credentials
-  if ((!credentials || !credentials.refresh_token) && process.env.REFRESH_TOKEN) {
+  if (
+    (!credentials || !credentials.refresh_token) &&
+    process.env.REFRESH_TOKEN
+  ) {
     console.log('Setting refresh token from environment');
     oauth2Client.setCredentials({
       refresh_token: process.env.REFRESH_TOKEN,
