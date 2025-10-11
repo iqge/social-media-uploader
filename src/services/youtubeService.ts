@@ -2,7 +2,6 @@ import { youtube } from '../config/google';
 import { validVideoExtensions } from '../config/multer';
 import fs from 'fs';
 import path from 'path';
-import logger from '../utils/logger';
 
 type VideoMetadata = {
   title: string;
@@ -13,15 +12,84 @@ type VideoMetadata = {
   categoryId: string;
 };
 
+type ScheduleCache = {
+  data: Date[];
+  timestamp: number;
+};
+
+// Cache configuration
+const CACHE_FILE_PATH = path.join(__dirname, '../../cache/schedule-cache.json');
+const CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
+
+// Ensure cache directory exists
+const ensureCacheDirectory = () => {
+  const cacheDir = path.dirname(CACHE_FILE_PATH);
+  if (!fs.existsSync(cacheDir)) {
+    fs.mkdirSync(cacheDir, { recursive: true });
+  }
+};
+
+// Read cache from file
+const readCache = (): ScheduleCache | null => {
+  try {
+    if (!fs.existsSync(CACHE_FILE_PATH)) {
+      return null;
+    }
+
+    const cacheContent = fs.readFileSync(CACHE_FILE_PATH, 'utf-8');
+    const cache: ScheduleCache = JSON.parse(cacheContent);
+
+    // Convert ISO strings back to Date objects
+    cache.data = cache.data.map((dateStr) => new Date(dateStr));
+
+    // Check if cache is still valid
+    if (Date.now() - cache.timestamp < CACHE_DURATION) {
+      console.log('Using cached schedule data from file');
+      return cache;
+    }
+
+    return null;
+  } catch (error) {
+    console.error('Error reading cache:', error);
+    return null;
+  }
+};
+
+// Write cache to file
+const writeCache = (data: Date[]) => {
+  try {
+    ensureCacheDirectory();
+
+    const cache: ScheduleCache = {
+      data,
+      timestamp: Date.now(),
+    };
+
+    fs.writeFileSync(CACHE_FILE_PATH, JSON.stringify(cache, null, 2));
+    console.log('Schedule cache written to file');
+  } catch (error) {
+    console.error('Error writing cache:', error);
+  }
+};
+
+// Clear cache (useful for forcing refresh)
+export const clearScheduleCache = () => {
+  try {
+    if (fs.existsSync(CACHE_FILE_PATH)) {
+      fs.unlinkSync(CACHE_FILE_PATH);
+      console.log('Schedule cache cleared');
+    }
+  } catch (error) {
+    console.error('Error clearing cache:', error);
+  }
+};
+
 export const uploadVideo = async (
   file: Express.Multer.File,
   metadata: VideoMetadata
 ) => {
-  logger.info(`Uploading video: ${file.originalname}`);
-  logger.info('Video metadata:', metadata);
   const fileExtension = path.extname(file.originalname).toLowerCase();
   if (!validVideoExtensions.includes(fileExtension)) {
-    logger.error(`Invalid video file extension: ${file.originalname}`);
     throw new Error(`Invalid video file extension: ${file.originalname}`);
   }
 
@@ -59,72 +127,78 @@ export const uploadVideo = async (
     },
   });
 
-  logger.info(`Successfully uploaded video: ${file.originalname}`);
+  // Clear cache after upload since schedule has changed
+  clearScheduleCache();
+
   return response.data;
 };
 
 export const getVideoStats = async (videoId: string) => {
-  logger.info(`Fetching video stats for video ID: ${videoId}`);
   const response = await youtube.videos.list({
     part: ['snippet', 'statistics'],
     id: [videoId],
   });
 
   if (!response.data.items?.length) {
-    logger.error(`Video not found: ${videoId}`);
     const error = new Error('Video not found');
     (error as any).code = 404;
     throw error;
   }
 
-  logger.info(`Successfully fetched video stats for video ID: ${videoId}`);
   return response.data.items[0];
 };
 
-// Function: Get all scheduled videos from the channel (for frontend conflict checking)
-export const getScheduledVideos = async () => {
-  logger.info('Fetching scheduled videos.');
+// Optimized function to fetch scheduled videos with minimal quota usage
+const fetchScheduledVideosFromAPI = async (): Promise<Date[]> => {
   const scheduledVideos: Date[] = [];
-  let pageToken: string | undefined = undefined;
 
   try {
-    // Get the channel ID first
+    // Step 1: Get channel info (1 quota unit)
     const channelResponse = await youtube.channels.list({
       part: ['contentDetails'],
       mine: true,
     });
 
     if (!channelResponse.data.items?.length) {
-      logger.error('No channel found for authenticated user.');
       throw new Error('No channel found for authenticated user');
     }
-    logger.info('Successfully fetched channel ID.');
 
-    // Fetch all videos from the channel
+    const uploadsPlaylistId =
+      channelResponse.data.items[0].contentDetails?.relatedPlaylists?.uploads;
+
+    if (!uploadsPlaylistId) {
+      return [];
+    }
+
+    // Step 2: Get videos from uploads playlist (1 quota unit per request)
+    // This is much cheaper than search.list (which costs 100 units)
+    let pageToken: string | undefined = undefined;
+    let fetchedCount = 0;
+    const maxToFetch = 100; // Limit to avoid excessive quota usage
+
     do {
-      const response = await youtube.search.list({
-        part: ['snippet'],
-        forMine: true,
-        type: ['video'],
+      const playlistResponse = await youtube.playlistItems.list({
+        part: ['contentDetails'],
+        playlistId: uploadsPlaylistId,
         maxResults: 50,
         pageToken,
       });
 
-      if (response.data.items) {
-        const videoIds = response.data.items
-          .map((item) => item.id?.videoId)
+      if (playlistResponse.data.items) {
+        const videoIds = playlistResponse.data.items
+          .map((item) => item.contentDetails?.videoId)
           .filter((id): id is string => !!id);
 
         if (videoIds.length > 0) {
-          // Get detailed info including publish status
+          // Step 3: Get video details in batch (1 quota unit per 50 videos)
           const videosResponse = await youtube.videos.list({
-            part: ['status', 'snippet'],
+            part: ['status'],
             id: videoIds,
           });
 
           if (videosResponse.data.items) {
             for (const video of videosResponse.data.items) {
-              // Check if video is scheduled (has publishAt date in the future)
+              // Only include videos scheduled in the future
               if (video.status?.publishAt) {
                 const publishDate = new Date(video.status.publishAt);
                 if (publishDate > new Date()) {
@@ -136,81 +210,55 @@ export const getScheduledVideos = async () => {
         }
       }
 
-      pageToken = response.data.nextPageToken || undefined;
+      fetchedCount += playlistResponse.data.items?.length || 0;
+      pageToken = playlistResponse.data.nextPageToken || undefined;
+
+      // Stop after fetching enough or reaching limit
+      if (fetchedCount >= maxToFetch) break;
     } while (pageToken);
 
-    logger.info(`Found ${scheduledVideos.length} scheduled videos.`);
     // Sort dates in ascending order
     return scheduledVideos.sort((a, b) => a.getTime() - b.getTime());
   } catch (error: any) {
-    logger.error('Error fetching scheduled videos:', error.message);
-    throw new Error(`Failed to fetch scheduled videos: ${error.message}`);
+    console.error('Error fetching scheduled videos:', error);
+    // Return empty array instead of throwing to avoid blocking uploads
+    return [];
   }
 };
 
-// New function: Calculate safe publish times avoiding conflicts
-export const calculateSafePublishTimes = (
+// Main function with caching
+export const getScheduledVideos = async (
+  forceRefresh: boolean = false
+): Promise<Date[]> => {
+  // Try to use cache first
+  if (!forceRefresh) {
+    const cachedData = readCache();
+    if (cachedData) {
+      return cachedData.data;
+    }
+  }
+
+  console.log('Fetching scheduled videos from YouTube API...');
+
+  // Fetch fresh data from API
+  const scheduledVideos = await fetchScheduledVideosFromAPI();
+
+  // Write to cache
+  writeCache(scheduledVideos);
+
+  return scheduledVideos;
+};
+
+// Quota-efficient version: No backend calculation needed
+// Frontend handles all schedule distribution
+export const calculateSafePublishTimes = async (
   requestedTimes: Date[],
   minGapDays: number = 1
 ): Promise<Date[]> => {
-  return new Promise(async (resolve, reject) => {
-    logger.info('Calculating safe publish times.');
-    logger.info('Requested times:', requestedTimes);
-    try {
-      const existingSchedule = await getScheduledVideos();
-      logger.info('Existing schedule:', existingSchedule);
-      const allScheduledDates = [...existingSchedule];
-      const safeTimes: Date[] = [];
-      const minGapMs = minGapDays * 24 * 60 * 60 * 1000;
-
-      for (const requestedTime of requestedTimes) {
-        let adjustedTime = new Date(requestedTime);
-        let attempts = 0;
-        const maxAttempts = 100;
-
-        while (attempts < maxAttempts) {
-          let hasConflict = false;
-
-          // Check against all scheduled dates (existing + newly calculated)
-          for (const scheduledDate of allScheduledDates) {
-            const timeDiff = Math.abs(
-              adjustedTime.getTime() - scheduledDate.getTime()
-            );
-
-            if (timeDiff < minGapMs) {
-              hasConflict = true;
-              logger.warn(
-                `Conflict found for ${requestedTime}. Adjusting time.`
-              );
-              // Move the time forward past the conflict
-              adjustedTime = new Date(scheduledDate.getTime() + minGapMs);
-              break;
-            }
-          }
-
-          if (!hasConflict) {
-            safeTimes.push(new Date(adjustedTime));
-            allScheduledDates.push(new Date(adjustedTime));
-            break;
-          }
-
-          attempts++;
-        }
-
-        if (attempts >= maxAttempts) {
-          logger.warn(
-            `Could not find conflict-free time for ${requestedTime}, using adjusted time anyway`
-          );
-          safeTimes.push(adjustedTime);
-          allScheduledDates.push(adjustedTime);
-        }
-      }
-
-      logger.info('Calculated safe times:', safeTimes);
-      resolve(safeTimes);
-    } catch (error) {
-      logger.error('Error calculating safe publish times:', error);
-      reject(error);
-    }
-  });
+  // This function is deprecated - frontend handles scheduling now
+  // Keeping for backward compatibility
+  console.warn(
+    'calculateSafePublishTimes is deprecated. Use frontend scheduling instead.'
+  );
+  return requestedTimes;
 };

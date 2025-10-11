@@ -2,9 +2,9 @@
 import express, { Request, Response } from 'express';
 import { upload } from '../config/multer';
 import { refreshMiddleware } from '../middleware/auth';
-import { uploadVideo, getScheduledVideos } from '../services/youtubeService';
+import { uploadVideo, getScheduledVideos, clearScheduleCache } from '../services/youtubeService';
 import path from 'path';
-import logger from '../utils/logger';
+import { oauth2Client } from '../config/google';
 
 const router = express.Router();
 
@@ -12,20 +12,39 @@ router.get('/upload-form', (req: Request, res: Response) => {
   res.sendFile(path.join(__dirname, '../../public', 'index.html'));
 });
 
-// Route: Get existing schedule (used by frontend for conflict checking)
+// Route: Get existing schedule (uses file cache by default)
 router.get(
   '/existing-schedule',
   refreshMiddleware,
   async (req: Request, res: Response) => {
     try {
-      const scheduledVideos = await getScheduledVideos();
-      logger.info('Successfully fetched existing schedule.');
+      // Check if force refresh is requested via query parameter
+      const forceRefresh = req.query.refresh === 'true';
+
+      const scheduledVideos = await getScheduledVideos(forceRefresh);
+
       res.status(200).json({
         count: scheduledVideos.length,
         scheduledDates: scheduledVideos,
+        cached: !forceRefresh,
       });
     } catch (error: any) {
-      logger.error('Error fetching schedule:', error.message);
+      console.error('Error fetching schedule:', error);
+      res.status(500).json({ error: error.message });
+    }
+  }
+);
+
+// Route: Clear schedule cache (useful for debugging or forced refresh)
+router.post(
+  '/clear-cache',
+  refreshMiddleware,
+  async (req: Request, res: Response) => {
+    try {
+      clearScheduleCache();
+      res.status(200).json({ message: 'Cache cleared successfully' });
+    } catch (error: any) {
+      console.error('Error clearing cache:', error);
       res.status(500).json({ error: error.message });
     }
   }
@@ -35,38 +54,43 @@ router.post(
   '/upload',
   [refreshMiddleware, upload.array('videos')],
   async (req: Request, res: Response) => {
+    console.log('Upload handler - credentials:', {
+      hasAccessToken: !!oauth2Client.credentials?.access_token,
+      hasRefreshToken: !!oauth2Client.credentials?.refresh_token,
+      expiryDate: oauth2Client.credentials?.expiry_date,
+    });
     const files = req.files as Express.Multer.File[];
     const results = [];
     const errors = [];
     const ageRestrictedVideos = [];
 
     if (!files?.length) {
-      logger.warn('No files uploaded.');
       return res.status(400).json({ error: 'No files uploaded' });
     }
 
-    logger.info(`Processing ${files.length} files for upload.`);
+    console.log(`Starting upload of ${files.length} video(s)...`);
 
     // Upload videos with their pre-calculated times from frontend
     for (const [index, file] of files.entries()) {
       try {
-        logger.info(
-          `Processing file ${index + 1} of ${files.length}: ${file.originalname}`
-        );
         const metadata = {
           title: req.body[`title_${index}`] as string,
           description: req.body[`description_${index}`] as string | undefined,
           tags: req.body[`tags_${index}`]
             ?.split(',')
-            .map((t: string) => t.trim()),
+            .map((t: string) => t.trim())
+            .filter((t: string) => t.length > 0),
           publishAt: req.body[`publishAt_${index}`] as string | undefined,
           is18Plus: req.body[`is18Plus_${index}`] === 'on',
           categoryId: '10',
         };
 
+        console.log(`Uploading video ${index + 1}: ${metadata.title}`);
+
         const response = await uploadVideo(file, metadata);
         results.push(response);
-        logger.info(`Successfully uploaded file: ${file.originalname}`);
+
+        console.log(`Video ${index + 1} uploaded successfully. ID: ${response.id}`);
 
         // Track 18+ videos for manual age restriction warning
         if (metadata.is18Plus && response.id) {
@@ -77,10 +101,7 @@ router.post(
           });
         }
       } catch (error: any) {
-        logger.error(
-          `Error uploading file ${file.originalname}:`,
-          error.message
-        );
+        console.error(`Error uploading video ${index + 1}:`, error.message);
         errors.push({
           file: file.originalname,
           error: error.message,
@@ -92,6 +113,8 @@ router.post(
       message: 'Upload process completed',
       uploadedVideos: results,
       failedUploads: errors,
+      successCount: results.length,
+      failureCount: errors.length,
     };
 
     // Add warning for 18+ videos
@@ -110,7 +133,9 @@ router.post(
       };
     }
 
-    logger.info('Upload process response:', responseData);
+    // Note: Cache is automatically cleared after each upload in uploadVideo()
+    console.log(`Upload complete. Success: ${results.length}, Failed: ${errors.length}`);
+
     res.status(200).json(responseData);
   }
 );

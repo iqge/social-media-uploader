@@ -7,42 +7,59 @@ export const refreshMiddleware = async (
   res: Response,
   next: NextFunction
 ) => {
+  console.log('=== REFRESH MIDDLEWARE START ===');
+  console.log('Route:', req.method, req.path);
+
   const credentials = oauth2Client.credentials;
 
-  // Check if we have any credentials at all
-  if (!credentials || !credentials.access_token) {
-    return res.status(401).json({
-      error: 'Not authenticated. Please authenticate first.',
-      redirectTo: '/auth',
+  console.log('Credentials check:', {
+    hasCredentials: !!credentials,
+    hasAccessToken: !!credentials?.access_token,
+    hasRefreshToken: !!credentials?.refresh_token,
+    hasEnvRefreshToken: !!process.env.REFRESH_TOKEN,
+    expiryDate: credentials?.expiry_date,
+    now: Date.now(),
+  });
+
+  // Check if we have refresh token in env but not in credentials
+  if ((!credentials || !credentials.refresh_token) && process.env.REFRESH_TOKEN) {
+    console.log('Setting refresh token from environment');
+    oauth2Client.setCredentials({
+      refresh_token: process.env.REFRESH_TOKEN,
     });
   }
 
-  // Check if the token is expired or about to expire (within 5 minutes)
+  // Check if we need to get/refresh access token
   if (
-    !credentials.expiry_date ||
+    !credentials?.access_token ||
+    !credentials?.expiry_date ||
     credentials.expiry_date <= Date.now() + 5 * 60 * 1000
   ) {
+    if (!process.env.REFRESH_TOKEN) {
+      console.log('REJECTING: No refresh token available');
+      return res.status(401).json({
+        error: 'Not authenticated. Please authenticate first.',
+        redirectTo: '/auth',
+      });
+    }
+
     try {
-      console.log('Access token expired, refreshing...');
+      console.log('Getting/refreshing access token...');
       const newAccessToken = await refreshAccessToken();
       oauth2Client.setCredentials({
         access_token: newAccessToken,
         refresh_token: process.env.REFRESH_TOKEN,
       });
-      console.log('Access token refreshed successfully');
+      console.log('Access token obtained successfully');
     } catch (error: any) {
       console.error('Refresh error:', error.message);
-      if (error.message.includes('Refresh token expired')) {
-        return res.status(401).json({
-          error: 'Session expired. Please re-authenticate.',
-          redirectTo: '/auth',
-        });
-      }
       return res.status(401).json({
         error: 'Failed to refresh access token',
         details: error.message,
       });
     }
   }
+
+  console.log('MIDDLEWARE PASSED - calling next()');
   next();
 };

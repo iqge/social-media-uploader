@@ -184,13 +184,14 @@ function analyzeScheduleQuality(scheduledDates, existingDates = []) {
 /**
  * Fetch existing schedule from YouTube
  */
-async function fetchExistingSchedule() {
+async function fetchExistingSchedule(forceRefresh = false) {
   const btn = document.getElementById('fetch-schedule-btn');
   btn.disabled = true;
-  btn.textContent = 'Fetching...';
+  btn.textContent = forceRefresh ? 'Refreshing from API...' : 'Fetching...';
 
   try {
-    const response = await fetch('/existing-schedule');
+    const url = forceRefresh ? '/existing-schedule?refresh=true' : '/existing-schedule';
+    const response = await fetch(url);
     const data = await response.json();
 
     existingSchedule = data.scheduledDates ? data.scheduledDates.map(d => new Date(d)) : [];
