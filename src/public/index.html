@@ -71,25 +71,6 @@
       font-size: 14px;
     }
 
-    .schedule-conflict-settings {
-      background: #fff3cd;
-      padding: 20px;
-      border-radius: 12px;
-      margin-bottom: 25px;
-      border: 2px solid #ffc107;
-    }
-
-    .schedule-conflict-settings h3 {
-      color: #856404;
-      margin-bottom: 15px;
-    }
-
-    #gap-settings {
-      margin-top: 15px;
-      padding-top: 15px;
-      border-top: 2px solid #ffc107;
-    }
-
     .smart-schedule-settings {
       background: #d1ecf1;
       padding: 20px;
@@ -108,6 +89,28 @@
       grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
       gap: 15px;
       margin-top: 15px;
+    }
+
+    .gap-section {
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      border-left: 4px solid #17a2b8;
+    }
+
+    .gap-section h4 {
+      color: #0c5460;
+      margin-bottom: 10px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .gap-section .help-text {
+      color: #666;
+      font-size: 12px;
+      margin-top: 5px;
+      line-height: 1.4;
     }
   </style>
 </head>
@@ -166,21 +169,53 @@
             <label for="enable-smart-schedule">Enable intelligent schedule distribution</label>
           </div>
           <div id="smart-schedule-options" style="display: none;">
-            <div class="settings-grid">
-              <div class="input-group">
-                <label for="min-gap-days">Minimum gap (days)</label>
-                <input type="number" id="min-gap-days" name="minGapDays" min="1" max="30" value="2">
+
+            <!-- Gap from existing scheduled videos -->
+            <div class="gap-section">
+              <h4>📅 Distance from Already Scheduled Videos</h4>
+              <div class="settings-grid">
+                <div class="input-group">
+                  <label for="existing-min-gap">Minimum gap (days)</label>
+                  <input type="number" id="existing-min-gap" name="existingMinGap" min="0" max="90" value="7">
+                  <small style="color: #666; display: block; margin-top: 3px;">Closest a new video can be to an existing one</small>
+                </div>
+                <div class="input-group">
+                  <label for="existing-max-gap">Maximum gap (days)</label>
+                  <input type="number" id="existing-max-gap" name="existingMaxGap" min="0" max="180" value="14">
+                  <small style="color: #666; display: block; margin-top: 3px;">Farthest a new video should be from existing ones</small>
+                </div>
               </div>
-              <div class="input-group">
-                <label for="max-gap-days">Maximum gap (days)</label>
-                <input type="number" id="max-gap-days" name="maxGapDays" min="2" max="60" value="4">
-              </div>
-              <div class="input-group">
-                <label for="randomness-factor">Randomness %</label>
-                <input type="number" id="randomness-factor" name="randomnessFactor" min="0" max="50" value="20">
-                <small style="color: #666; display: block; margin-top: 5px;">Higher = more variation in gaps</small>
+              <div class="help-text">
+                ⚡ Control spacing between new videos and your already scheduled videos
               </div>
             </div>
+
+            <!-- Gap between videos in current batch -->
+            <div class="gap-section">
+              <h4>🎬 Distance Between New Videos (Current Batch)</h4>
+              <div class="settings-grid">
+                <div class="input-group">
+                  <label for="batch-min-gap">Minimum gap (days)</label>
+                  <input type="number" id="batch-min-gap" name="batchMinGap" min="0" max="180" value="30">
+                  <small style="color: #666; display: block; margin-top: 3px;">Closest two new videos can be to each other</small>
+                </div>
+                <div class="input-group">
+                  <label for="batch-max-gap">Maximum gap (days)</label>
+                  <input type="number" id="batch-max-gap" name="batchMaxGap" min="0" max="365" value="45">
+                  <small style="color: #666; display: block; margin-top: 3px;">Farthest two new videos should be apart</small>
+                </div>
+              </div>
+              <div class="help-text">
+                🎯 Control spacing between the videos you're uploading now (spreads them as far as possible within range)
+              </div>
+            </div>
+
+            <div class="input-group">
+              <label for="randomness-factor">Randomness %</label>
+              <input type="number" id="randomness-factor" name="randomnessFactor" min="0" max="50" value="20">
+              <small style="color: #666; display: block; margin-top: 5px;">Higher = more variation in gaps</small>
+            </div>
+
             <div class="checkbox-group" style="margin-top: 15px;">
               <input type="checkbox" id="respect-existing" name="respectExisting" checked>
               <label for="respect-existing">Maintain gap from existing scheduled videos</label>

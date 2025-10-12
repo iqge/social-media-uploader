@@ -11,10 +11,10 @@ document.getElementById('enable-smart-schedule').addEventListener('change', func
   document.getElementById('smart-schedule-options').style.display = this.checked ? 'block' : 'none';
 });
 
-// Validate gap settings
-document.getElementById('min-gap-days').addEventListener('change', function() {
+// Validate gap settings - Existing gaps
+document.getElementById('existing-min-gap').addEventListener('change', function() {
   const minGap = parseInt(this.value);
-  const maxGapInput = document.getElementById('max-gap-days');
+  const maxGapInput = document.getElementById('existing-max-gap');
   const maxGap = parseInt(maxGapInput.value);
 
   if (maxGap <= minGap) {
@@ -22,9 +22,30 @@ document.getElementById('min-gap-days').addEventListener('change', function() {
   }
 });
 
-document.getElementById('max-gap-days').addEventListener('change', function() {
+document.getElementById('existing-max-gap').addEventListener('change', function() {
   const maxGap = parseInt(this.value);
-  const minGapInput = document.getElementById('min-gap-days');
+  const minGapInput = document.getElementById('existing-min-gap');
+  const minGap = parseInt(minGapInput.value);
+
+  if (maxGap <= minGap) {
+    this.value = minGap + 1;
+  }
+});
+
+// Validate gap settings - Batch gaps
+document.getElementById('batch-min-gap').addEventListener('change', function() {
+  const minGap = parseInt(this.value);
+  const maxGapInput = document.getElementById('batch-max-gap');
+  const maxGap = parseInt(maxGapInput.value);
+
+  if (maxGap <= minGap) {
+    maxGapInput.value = minGap + 1;
+  }
+});
+
+document.getElementById('batch-max-gap').addEventListener('change', function() {
+  const maxGap = parseInt(this.value);
+  const minGapInput = document.getElementById('batch-min-gap');
   const minGap = parseInt(minGapInput.value);
 
   if (maxGap <= minGap) {
@@ -183,9 +204,11 @@ document.getElementById('apply-bulk').addEventListener('click', function() {
   const useSmartSchedule = document.getElementById('enable-smart-schedule').checked;
 
   if (useSmartSchedule) {
-    // Use smart scheduling algorithm
-    const minGapDays = parseInt(document.getElementById('min-gap-days').value) || 2;
-    const maxGapDays = parseInt(document.getElementById('max-gap-days').value) || 4;
+    // Use smart scheduling algorithm with separate gap settings
+    const batchMinGap = parseInt(document.getElementById('batch-min-gap').value) || 30;
+    const batchMaxGap = parseInt(document.getElementById('batch-max-gap').value) || 45;
+    const existingMinGap = parseInt(document.getElementById('existing-min-gap').value) || 7;
+    const existingMaxGap = parseInt(document.getElementById('existing-max-gap').value) || 14;
     const randomnessFactor = parseInt(document.getElementById('randomness-factor').value) || 20;
     const respectExisting = document.getElementById('respect-existing').checked;
 
@@ -194,8 +217,10 @@ document.getElementById('apply-bulk').addEventListener('click', function() {
       bulkStartDate,
       bulkEndDate,
       {
-        minGapDays,
-        maxGapDays,
+        batchMinGap,
+        batchMaxGap,
+        existingMinGap,
+        existingMaxGap,
         randomnessFactor,
         respectExisting,
         allowedDays: bulkDays,
@@ -314,9 +339,18 @@ document.getElementById('apply-bulk').addEventListener('click', function() {
 
       if (quality) {
         summaryMessage += `\n\nSchedule Quality:`;
-        summaryMessage += `\n  Average gap: ${quality.averageGap} days`;
-        summaryMessage += `\n  Min gap: ${quality.minGap} days`;
-        summaryMessage += `\n  Max gap: ${quality.maxGap} days`;
+        if (quality.batchGaps) {
+          summaryMessage += `\n📊 Between new videos:`;
+          summaryMessage += `\n  Average gap: ${quality.batchGaps.average} days`;
+          summaryMessage += `\n  Min gap: ${quality.batchGaps.min} days`;
+          summaryMessage += `\n  Max gap: ${quality.batchGaps.max} days`;
+        }
+        if (quality.existingGaps) {
+          summaryMessage += `\n📅 From existing videos:`;
+          summaryMessage += `\n  Average gap: ${quality.existingGaps.average} days`;
+          summaryMessage += `\n  Min gap: ${quality.existingGaps.min} days`;
+          summaryMessage += `\n  Max gap: ${quality.existingGaps.max} days`;
+        }
       }
     }
   }
