@@ -1,4 +1,232 @@
-// main.js - Main application logic
+// main.js - Main application logic with song name extraction and named localStorage configs
+
+// Helper function to extract song name from filename
+function extractSongName(filename) {
+  // Remove file extension
+  const nameWithoutExt = filename.replace(/\.[^/.]+$/, '');
+
+  // Look for pattern __songName__
+  const match = nameWithoutExt.match(/__([^_]+)__/);
+
+  if (match && match[1]) {
+    return match[1].trim();
+  }
+
+  // Fallback: return null if no pattern found
+  return null;
+}
+
+// Helper function to substitute {song_name} in title template
+function applyTitleTemplate(template, songName) {
+  if (!songName) {
+    // No song name extracted, return template as-is
+    return template;
+  }
+
+  // Replace {song_name} placeholder with actual song name
+  return template.replace(/\{song_name\}/gi, songName);
+}
+
+// ============================================================================
+// CONFIGURATION MANAGEMENT - localStorage with Named Configs
+// ============================================================================
+
+const CONFIG_LIST_KEY = 'youtubeUploaderConfigs';
+
+// Get all saved configuration names
+function getSavedConfigNames() {
+  try {
+    const configs = localStorage.getItem(CONFIG_LIST_KEY);
+    return configs ? JSON.parse(configs) : {};
+  } catch (error) {
+    console.error('Error reading configs:', error);
+    return {};
+  }
+}
+
+// Save all configurations
+function saveAllConfigs(configs) {
+  try {
+    localStorage.setItem(CONFIG_LIST_KEY, JSON.stringify(configs));
+  } catch (error) {
+    console.error('Error saving configs:', error);
+    throw error;
+  }
+}
+
+// Get current configuration from form
+function getCurrentConfig() {
+  return {
+    bulkTitle: document.getElementById('bulk-title').value,
+    bulkDescription: document.getElementById('bulk-description').value,
+    bulkTags: document.getElementById('bulk-tags').value,
+    bulkIs18Plus: document.getElementById('bulk-is-18-plus').checked,
+    bulkStartDate: document.getElementById('bulk-start-date').value,
+    bulkEndDate: document.getElementById('bulk-end-date').value,
+    bulkStartTime: document.getElementById('bulk-start-time').value,
+    bulkEndTime: document.getElementById('bulk-end-time').value,
+    enableSmartSchedule: document.getElementById('enable-smart-schedule').checked,
+    batchMinGap: document.getElementById('batch-min-gap').value,
+    batchMaxGap: document.getElementById('batch-max-gap').value,
+    existingMinGap: document.getElementById('existing-min-gap').value,
+    existingMaxGap: document.getElementById('existing-max-gap').value,
+    randomnessFactor: document.getElementById('randomness-factor').value,
+    respectExisting: document.getElementById('respect-existing').checked,
+    selectedDays: Array.from(document.querySelectorAll('.day-btn.selected')).map(btn => btn.dataset.day),
+    savedAt: new Date().toISOString()
+  };
+}
+
+// Apply configuration to form
+function applyConfig(config) {
+  // Load bulk settings
+  if (config.bulkTitle !== undefined) document.getElementById('bulk-title').value = config.bulkTitle;
+  if (config.bulkDescription !== undefined) document.getElementById('bulk-description').value = config.bulkDescription;
+  if (config.bulkTags !== undefined) document.getElementById('bulk-tags').value = config.bulkTags;
+  if (config.bulkIs18Plus !== undefined) document.getElementById('bulk-is-18-plus').checked = config.bulkIs18Plus;
+  if (config.bulkStartDate !== undefined) document.getElementById('bulk-start-date').value = config.bulkStartDate;
+  if (config.bulkEndDate !== undefined) document.getElementById('bulk-end-date').value = config.bulkEndDate;
+  if (config.bulkStartTime !== undefined) document.getElementById('bulk-start-time').value = config.bulkStartTime;
+  if (config.bulkEndTime !== undefined) document.getElementById('bulk-end-time').value = config.bulkEndTime;
+
+  // Load smart schedule settings
+  if (config.enableSmartSchedule !== undefined) {
+    const smartScheduleCheckbox = document.getElementById('enable-smart-schedule');
+    smartScheduleCheckbox.checked = config.enableSmartSchedule;
+    smartScheduleCheckbox.dispatchEvent(new Event('change'));
+  }
+  if (config.batchMinGap !== undefined) document.getElementById('batch-min-gap').value = config.batchMinGap;
+  if (config.batchMaxGap !== undefined) document.getElementById('batch-max-gap').value = config.batchMaxGap;
+  if (config.existingMinGap !== undefined) document.getElementById('existing-min-gap').value = config.existingMinGap;
+  if (config.existingMaxGap !== undefined) document.getElementById('existing-max-gap').value = config.existingMaxGap;
+  if (config.randomnessFactor !== undefined) document.getElementById('randomness-factor').value = config.randomnessFactor;
+  if (config.respectExisting !== undefined) document.getElementById('respect-existing').checked = config.respectExisting;
+
+  // Load selected days
+  if (config.selectedDays && Array.isArray(config.selectedDays)) {
+    document.querySelectorAll('.day-btn').forEach(btn => {
+      if (config.selectedDays.includes(btn.dataset.day)) {
+        btn.classList.add('selected');
+      } else {
+        btn.classList.remove('selected');
+      }
+    });
+  }
+
+  // Trigger schedule options display if dates are set
+  toggleScheduleOptions();
+
+  // Trigger title counter update
+  document.getElementById('bulk-title').dispatchEvent(new Event('input'));
+}
+
+// Save configuration with a name
+function saveConfiguration() {
+  const configName = prompt('Enter a name for this configuration:');
+
+  if (!configName || configName.trim() === '') {
+    alert('⚠️ Configuration name cannot be empty');
+    return;
+  }
+
+  const trimmedName = configName.trim();
+
+  try {
+    const allConfigs = getSavedConfigNames();
+    const config = getCurrentConfig();
+
+    // Check if name already exists
+    if (allConfigs[trimmedName]) {
+      if (!confirm(`Configuration "${trimmedName}" already exists. Overwrite?`)) {
+        return;
+      }
+    }
+
+    allConfigs[trimmedName] = config;
+    saveAllConfigs(allConfigs);
+
+    alert(`✅ Configuration "${trimmedName}" saved successfully!`);
+    updateConfigList();
+  } catch (error) {
+    alert('❌ Error saving configuration: ' + error.message);
+  }
+}
+
+// Load configuration by name
+function loadConfiguration(configName) {
+  try {
+    const allConfigs = getSavedConfigNames();
+    const config = allConfigs[configName];
+
+    if (!config) {
+      alert(`❌ Configuration "${configName}" not found`);
+      return;
+    }
+
+    applyConfig(config);
+    alert(`✅ Configuration "${configName}" loaded successfully!`);
+  } catch (error) {
+    alert('❌ Error loading configuration: ' + error.message);
+  }
+}
+
+// Delete configuration by name
+function deleteConfiguration(configName) {
+  if (!confirm(`Are you sure you want to delete "${configName}"?`)) {
+    return;
+  }
+
+  try {
+    const allConfigs = getSavedConfigNames();
+    delete allConfigs[configName];
+    saveAllConfigs(allConfigs);
+
+    alert(`✅ Configuration "${configName}" deleted successfully!`);
+    updateConfigList();
+  } catch (error) {
+    alert('❌ Error deleting configuration: ' + error.message);
+  }
+}
+
+// Update the configuration list display
+function updateConfigList() {
+  const listContainer = document.getElementById('config-list');
+  if (!listContainer) return;
+
+  const allConfigs = getSavedConfigNames();
+  const configNames = Object.keys(allConfigs);
+
+  if (configNames.length === 0) {
+    listContainer.innerHTML = '<p style="color: #666; font-style: italic; padding: 10px;">No saved configurations</p>';
+    return;
+  }
+
+  listContainer.innerHTML = configNames.map(name => {
+    const config = allConfigs[name];
+    const savedDate = config.savedAt ? new Date(config.savedAt).toLocaleString() : 'Unknown';
+
+    return `
+      <div class="config-item">
+        <div class="config-item-info">
+          <strong>${name}</strong>
+          <small style="color: #666;">Saved: ${savedDate}</small>
+        </div>
+        <div class="config-item-actions">
+          <button type="button" class="btn-small btn-load" onclick="loadConfiguration('${name.replace(/'/g, "\\'")}')">
+            📂 Load
+          </button>
+          <button type="button" class="btn-small btn-delete" onclick="deleteConfiguration('${name.replace(/'/g, "\\'")}')">
+            🗑️ Delete
+          </button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ============================================================================
+// END CONFIGURATION MANAGEMENT
+// ============================================================================
 
 // Set minimum date for datetime inputs to now
 const now = new Date();
@@ -56,6 +284,40 @@ document.getElementById('batch-max-gap').addEventListener('change', function() {
 // Fetch existing schedule
 document.getElementById('fetch-schedule-btn').addEventListener('click', () => {
   window.schedulingModule.fetchExistingSchedule();
+});
+
+// Save Configuration button
+document.getElementById('save-config-btn')?.addEventListener('click', () => {
+  saveConfiguration();
+});
+
+// Load Configuration button - show list
+document.getElementById('load-config-btn')?.addEventListener('click', () => {
+  updateConfigList();
+  const modal = document.getElementById('config-modal');
+  if (modal) {
+    modal.classList.add('active');
+  }
+});
+
+// Close config modal
+document.getElementById('close-config-modal')?.addEventListener('click', () => {
+  const modal = document.getElementById('config-modal');
+  if (modal) {
+    modal.classList.remove('active');
+  }
+});
+
+// Click outside modal to close
+document.getElementById('config-modal')?.addEventListener('click', function(e) {
+  if (e.target === this) {
+    this.classList.remove('active');
+  }
+});
+
+// Initialize config list on page load
+document.addEventListener('DOMContentLoaded', () => {
+  updateConfigList();
 });
 
 // Title counter
@@ -190,27 +452,28 @@ document.getElementById('apply-bulk').addEventListener('click', function() {
     }
   }
 
-  let titlePool = [];
+  // Create title pool - but keep as templates for now
+  let titleTemplates = [];
   if (bulkTitles.length > 0) {
-    while (titlePool.length < videoCount) {
-      titlePool = titlePool.concat([...bulkTitles]);
+    while (titleTemplates.length < videoCount) {
+      titleTemplates = titleTemplates.concat([...bulkTitles]);
     }
-    titlePool.sort(() => Math.random() - 0.5);
-    titlePool = titlePool.slice(0, videoCount);
+    titleTemplates.sort(() => Math.random() - 0.5);
+    titleTemplates = titleTemplates.slice(0, videoCount);
   }
 
   // Generate schedule
   let scheduledDates = [];
   const useSmartSchedule = document.getElementById('enable-smart-schedule').checked;
 
+  const respectExisting = document.getElementById('respect-existing')?.checked || false;
+
   if (useSmartSchedule) {
-    // Use smart scheduling algorithm with separate gap settings
     const batchMinGap = parseInt(document.getElementById('batch-min-gap').value) || 30;
     const batchMaxGap = parseInt(document.getElementById('batch-max-gap').value) || 45;
     const existingMinGap = parseInt(document.getElementById('existing-min-gap').value) || 7;
     const existingMaxGap = parseInt(document.getElementById('existing-max-gap').value) || 14;
     const randomnessFactor = parseInt(document.getElementById('randomness-factor').value) || 20;
-    const respectExisting = document.getElementById('respect-existing').checked;
 
     scheduledDates = window.schedulingModule.generateSmartSchedule(
       videoCount,
@@ -229,7 +492,6 @@ document.getElementById('apply-bulk').addEventListener('click', function() {
       }
     );
 
-    // Analyze and show quality metrics
     const quality = window.schedulingModule.analyzeScheduleQuality(
       scheduledDates,
       respectExisting ? window.schedulingModule.getExistingSchedule() : []
@@ -239,7 +501,6 @@ document.getElementById('apply-bulk').addEventListener('click', function() {
       console.log('Schedule Quality Analysis:', quality);
     }
   } else {
-    // Use old random scheduling
     for (let i = 0; i < videoCount; i++) {
       let randomDate;
       let attempts = 0;
@@ -264,19 +525,26 @@ document.getElementById('apply-bulk').addEventListener('click', function() {
 
   // Apply to form
   videoSections.forEach((section, index) => {
-    if (titlePool.length > 0 && titlePool[index]) {
-      const selectedTitle = titlePool[index];
+    // Get the song name from the section's stored filename
+    const originalFilename = section.dataset.originalFilename;
+    const songName = originalFilename ? extractSongName(originalFilename) : null;
+
+    if (titleTemplates.length > 0 && titleTemplates[index]) {
+      const titleTemplate = titleTemplates[index];
+      // Apply song name substitution to the title template
+      const finalTitle = applyTitleTemplate(titleTemplate, songName);
+
       const titleInput = section.querySelector('input[name^="title_"]');
       if (titleInput) {
-        titleInput.value = selectedTitle;
+        titleInput.value = finalTitle;
       }
 
       const descriptionTextarea = section.querySelector('textarea[name^="description_"]');
       if (descriptionTextarea) {
         if (bulkDescription && bulkDescription.trim()) {
-          descriptionTextarea.value = `${selectedTitle}\n\n\n${bulkDescription}`;
+          descriptionTextarea.value = `${finalTitle}\n\n\n${bulkDescription}`;
         } else {
-          descriptionTextarea.value = `${selectedTitle}\n\n\n`;
+          descriptionTextarea.value = `${finalTitle}\n\n\n`;
         }
       }
     } else if (bulkDescription && bulkDescription.trim()) {
@@ -307,18 +575,21 @@ document.getElementById('apply-bulk').addEventListener('click', function() {
     }
   });
 
-  const uniqueTitlesUsed = new Set(titlePool).size;
+  const uniqueTitlesUsed = new Set(titleTemplates).size;
   let summaryMessage = 'Applied bulk settings!\n\n';
 
-  if (titlePool.length > 0) {
-    summaryMessage += `${uniqueTitlesUsed} unique title(s) assigned to ${videoCount} video(s)\n`;
+  if (titleTemplates.length > 0) {
+    summaryMessage += `${uniqueTitlesUsed} unique title template(s) assigned to ${videoCount} video(s)\n`;
+    if (titleTemplates.some(t => t.includes('{song_name}'))) {
+      summaryMessage += '🎵 Song names will be substituted from filenames\n';
+    }
     summaryMessage += 'Each title has been prefixed in the description with 2 empty lines\n\n';
-    summaryMessage += 'Titles used:\n';
-    titlePool.slice(0, Math.min(5, titlePool.length)).forEach((title, idx) => {
+    summaryMessage += 'Title templates used:\n';
+    titleTemplates.slice(0, Math.min(5, titleTemplates.length)).forEach((title, idx) => {
       summaryMessage += `  ${idx + 1}. ${title}\n`;
     });
-    if (titlePool.length > 5) {
-      summaryMessage += `  ... and ${titlePool.length - 5} more\n`;
+    if (titleTemplates.length > 5) {
+      summaryMessage += `  ... and ${titleTemplates.length - 5} more\n`;
     }
   } else {
     summaryMessage += 'Description applied to all videos\n';
@@ -361,12 +632,12 @@ document.getElementById('apply-bulk').addEventListener('click', function() {
     videoCount,
     titlesProvided: bulkTitles.length,
     uniqueTitlesUsed,
-    titlePool,
+    titleTemplates,
     scheduledDates: scheduledDates.length
   });
 });
 
-// Handle file selection
+// Handle file selection with song name extraction
 const videoInput = document.getElementById('video-input');
 const videoFormsContainer = document.getElementById('video-forms-container');
 
@@ -375,12 +646,21 @@ videoInput.addEventListener('change', (e) => {
   const files = e.target.files;
 
   Array.from(files).forEach((file, index) => {
+    // Extract song name from filename
+    const songName = extractSongName(file.name);
+
     const formSection = document.createElement('div');
     formSection.classList.add('video-form-section');
+    formSection.dataset.originalFilename = file.name; // Store for reference
 
     formSection.innerHTML = `
       <div class="video-header">
-        <div class="video-number">Video ${index + 1}</div>
+        <div class="video-number">
+          Video ${index + 1}
+          ${songName ? `<span style="color: #667eea; font-size: 0.9em; font-weight: 500; margin-left: 10px;">
+            🎵 "${songName}"
+          </span>` : ''}
+        </div>
         <button type="button" class="btn btn-danger delete-btn">Delete</button>
       </div>
 
@@ -390,7 +670,10 @@ videoInput.addEventListener('change', (e) => {
 
       <div class="input-group">
         <label>Title *</label>
-        <input type="text" name="title_${index}" placeholder="Enter video title" required>
+        <input type="text" name="title_${index}" placeholder="Enter video title or use {song_name} placeholder" required>
+        <small style="color: #666; display: block; margin-top: 3px;">
+          ${songName ? `🎵 Detected song: "${songName}" - Use {song_name} in title to auto-substitute` : 'No song name detected in filename (use __songName__ pattern)'}
+        </small>
       </div>
 
       <div class="input-group">
@@ -426,12 +709,44 @@ videoInput.addEventListener('change', (e) => {
 
     const changeBtn = formSection.querySelector('.change-video-btn');
     const changeInput = formSection.querySelector('.change-video-input');
+    const titleInput = formSection.querySelector('input[name^="title_"]');
+
     changeBtn.addEventListener('click', () => changeInput.click());
     changeInput.addEventListener('change', (event) => {
       const newFile = event.target.files[0];
       if (newFile) {
         const videoPreview = formSection.querySelector('.video-preview');
         videoPreview.src = URL.createObjectURL(newFile);
+
+        // Update song name when file changes
+        const newSongName = extractSongName(newFile.name);
+
+        // Update the display in the header
+        const videoNumber = formSection.querySelector('.video-number');
+        const existingSongDisplay = videoNumber.querySelector('span');
+
+        if (newSongName) {
+          if (existingSongDisplay) {
+            existingSongDisplay.textContent = `🎵 "${newSongName}"`;
+          } else {
+            const songSpan = document.createElement('span');
+            songSpan.style.cssText = 'color: #667eea; font-size: 0.9em; font-weight: 500; margin-left: 10px;';
+            songSpan.textContent = `🎵 "${newSongName}"`;
+            videoNumber.appendChild(songSpan);
+          }
+        } else if (existingSongDisplay) {
+          existingSongDisplay.remove();
+        }
+
+        // Update helper text
+        const helperText = titleInput.nextElementSibling;
+        if (helperText && helperText.tagName === 'SMALL') {
+          helperText.textContent = newSongName
+            ? `🎵 Detected song: "${newSongName}" - Use {song_name} in title to auto-substitute`
+            : 'No song name detected in filename (use __songName__ pattern)';
+        }
+
+        formSection.dataset.originalFilename = newFile.name;
       }
     });
 

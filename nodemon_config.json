@@ -1,0 +1,12 @@
+{
+  "watch": ["src", "dist"],
+  "ignore": [
+    "cache/**",
+    "uploads/**",
+    "*.log",
+    "node_modules/**",
+    ".git/**"
+  ],
+  "ext": "js,ts,json",
+  "exec": "node dist/index.js"
+}

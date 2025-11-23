@@ -32,13 +32,15 @@ export const refreshMiddleware = async (
     });
   }
 
-  // Check if we need to get/refresh access token
-  if (
+  // Check if token needs refresh: no access token OR token expired (with 5 min buffer)
+  // IMPORTANT: Only refresh if we actually don't have a token or it's expired
+  const needsRefresh =
     !credentials?.access_token ||
-    !credentials?.expiry_date ||
-    credentials.expiry_date <= Date.now() + 5 * 60 * 1000
-  ) {
-    if (!process.env.REFRESH_TOKEN) {
+    (credentials?.expiry_date &&
+     credentials.expiry_date <= Date.now() + 5 * 60 * 1000);
+
+  if (needsRefresh) {
+    if (!process.env.REFRESH_TOKEN && !credentials?.refresh_token) {
       console.log('REJECTING: No refresh token available');
       return res.status(401).json({
         error: 'Not authenticated. Please authenticate first.',
@@ -49,10 +51,13 @@ export const refreshMiddleware = async (
     try {
       console.log('Getting/refreshing access token...');
       const newAccessToken = await refreshAccessToken();
+
+      // Set credentials with the new access token
       oauth2Client.setCredentials({
         access_token: newAccessToken,
         refresh_token: process.env.REFRESH_TOKEN,
       });
+
       console.log('Access token obtained successfully');
     } catch (error: any) {
       console.error('Refresh error:', error.message);
@@ -61,6 +66,8 @@ export const refreshMiddleware = async (
         details: error.message,
       });
     }
+  } else {
+    console.log('Token is still valid, skipping refresh');
   }
 
   console.log('MIDDLEWARE PASSED - calling next()');

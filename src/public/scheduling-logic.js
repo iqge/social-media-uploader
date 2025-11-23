@@ -1,10 +1,10 @@
-// scheduling-logic.js - All scheduling logic in frontend
+// scheduling-logic.js - Optimized scheduling algorithm
 
 // Store existing schedule globally
 let existingSchedule = [];
 
 /**
- * Smart scheduling algorithm with separate gap settings
+ * Optimized scheduling that prioritizes batch distribution above all else
  * @param {number} videoCount - Number of videos to schedule
  * @param {Date} startDate - Start of scheduling window
  * @param {Date} endDate - End of scheduling window
@@ -13,273 +13,689 @@ let existingSchedule = [];
  */
 function generateSmartSchedule(videoCount, startDate, endDate, options = {}) {
   const {
-    batchMinGap = 30,        // Min gap between videos in current batch (default 30 days)
-    batchMaxGap = 45,        // Max gap between videos in current batch (default 45 days)
-    existingMinGap = 7,      // Min gap from already scheduled videos (default 7 days)
-    existingMaxGap = 14,     // Max gap from already scheduled videos (default 14 days)
-    randomnessFactor = 20,   // percentage
+    batchMinGap = 30,
+    batchMaxGap = 45,
+    existingMinGap = 7,
+    existingMaxGap = 14,
+    randomnessFactor = 20,
     respectExisting = true,
-    allowedDays = [],        // empty = all days
+    allowedDays = [],
     startTime = null,
     endTime = null
   } = options;
 
-  // Ensure we're working with Date objects and not in the past
+  // Validate inputs
+  if (videoCount <= 0) return [];
+
   const now = new Date();
   const actualStartDate = new Date(Math.max(startDate.getTime(), now.getTime()));
   const actualEndDate = new Date(endDate);
 
-  console.log('Scheduling with settings:', {
-    batchMinGap,
-    batchMaxGap,
-    existingMinGap,
-    existingMaxGap,
-    videoCount,
-    existingScheduleCount: existingSchedule.length,
-    startDate: actualStartDate.toISOString(),
-    endDate: actualEndDate.toISOString(),
-    allowedDays,
-    startTime,
-    endTime
-  });
-
-  // Validate date range
   if (actualEndDate <= actualStartDate) {
     alert('Error: End date must be after start date');
     return [];
   }
 
+  console.log('Maximum distribution scheduling with settings:', {
+    batchMinGap,
+    batchMaxGap,
+    videoCount,
+    existingScheduleCount: existingSchedule.length,
+    startDate: actualStartDate.toISOString(),
+    endDate: actualEndDate.toISOString()
+  });
+
   // Convert to milliseconds
   const batchMinGapMs = batchMinGap * 24 * 60 * 60 * 1000;
   const batchMaxGapMs = batchMaxGap * 24 * 60 * 60 * 1000;
-  const existingMinGapMs = existingMinGap * 24 * 60 * 60 * 1000;
   const totalTimeWindow = actualEndDate.getTime() - actualStartDate.getTime();
 
-  // Check if we can fit all videos
-  const requiredSpace = videoCount * batchMinGapMs;
-  if (requiredSpace > totalTimeWindow) {
-    alert(`Warning: Time window (${(totalTimeWindow / (24 * 60 * 60 * 1000)).toFixed(1)} days) may be too small for ${videoCount} videos with ${batchMinGap} day minimum gap. Videos will be packed as tightly as possible.`);
+  // Calculate ideal spread - this is our primary goal
+  const idealGap = totalTimeWindow / (videoCount + 1);
+
+  // For maximum spread, we want to place videos at ideal distribution points
+  const idealPoints = [];
+  for (let i = 0; i < videoCount; i++) {
+    const position = (i + 1) / (videoCount + 1);
+    idealPoints.push(actualStartDate.getTime() + totalTimeWindow * position);
   }
 
   const scheduledDates = [];
-  const allScheduledDates = respectExisting ? [...existingSchedule] : [];
-
-  // Helper function to apply time constraints
-  const applyTimeConstraints = (date) => {
-    const newDate = new Date(date);
-
-    if (startTime && endTime) {
-      const [startHour, startMinute] = startTime.split(':').map(Number);
-      const [endHour, endMinute] = endTime.split(':').map(Number);
-
-      const startTimeMinutes = startHour * 60 + startMinute;
-      const endTimeMinutes = endHour * 60 + endMinute;
-
-      // Generate random time within allowed range
-      const randomMinutes = startTimeMinutes + Math.random() * (endTimeMinutes - startTimeMinutes);
-      newDate.setHours(Math.floor(randomMinutes / 60), Math.floor(randomMinutes % 60), 0, 0);
-    }
-
-    return newDate;
-  };
-
-  // Helper function to apply day constraints
-  const adjustToAllowedDay = (date) => {
-    if (allowedDays.length === 0) return new Date(date);
-
-    const newDate = new Date(date);
-    let attempts = 0;
-
-    while (!allowedDays.includes(newDate.getDay().toString()) && attempts < 14) {
-      newDate.setDate(newDate.getDate() + 1);
-      attempts++;
-    }
-
-    // If we can't find allowed day within 2 weeks, just return original
-    if (attempts >= 14) {
-      console.warn('Could not find allowed day within 2 weeks, using original date');
-      return new Date(date);
-    }
-
-    return newDate;
-  };
-
-  // Helper function to check if date is valid (not in past, within range)
-  const isValidDate = (date) => {
-    return date >= now && date >= actualStartDate && date <= actualEndDate;
-  };
-
-  // Strategy: Distribute videos evenly across the time window
-  const idealGap = totalTimeWindow / (videoCount + 1);
 
   for (let i = 0; i < videoCount; i++) {
-    let attempts = 0;
-    const maxAttempts = 500;
-    let proposedTime = null;
-    let bestProposedTime = null;
+    const idealTime = idealPoints[i];
+    let bestDate = null;
     let bestScore = -Infinity;
 
-    while (attempts < maxAttempts) {
-      // Calculate target position in timeline
-      let targetGap;
+    // Try to find the best position around the ideal point
+    for (let attempt = 0; attempt < 100; attempt++) {
+      let candidateTime;
 
-      if (i === 0) {
-        // First video: place near beginning
-        targetGap = Math.random() * Math.min(idealGap * 0.5, batchMaxGapMs);
-        proposedTime = new Date(actualStartDate.getTime() + targetGap);
+      if (attempt === 0) {
+        // First attempt: exact ideal position
+        candidateTime = idealTime;
       } else {
-        // Subsequent videos: maintain good spacing from last scheduled
-        const lastScheduled = scheduledDates[scheduledDates.length - 1];
-        const remainingVideos = videoCount - i;
-        const remainingTime = actualEndDate.getTime() - lastScheduled.getTime();
-
-        // Calculate target gap with randomness
-        let baseGap = (batchMinGapMs + batchMaxGapMs) / 2;
-
-        // Adjust based on remaining space
-        const averageRemainingGap = remainingTime / (remainingVideos + 1);
-        if (averageRemainingGap < baseGap) {
-          baseGap = Math.max(batchMinGapMs, averageRemainingGap);
-        }
-
-        // Add randomness
-        const randomVariation = baseGap * (randomnessFactor / 100);
-        targetGap = baseGap + (Math.random() * 2 - 1) * randomVariation;
-
-        // Clamp to min/max
-        targetGap = Math.max(batchMinGapMs, Math.min(batchMaxGapMs, targetGap));
-
-        proposedTime = new Date(lastScheduled.getTime() + targetGap);
+        // Subsequent attempts: search around ideal point with increasing radius
+        const searchRadius = Math.min(totalTimeWindow * 0.4, attempt * totalTimeWindow * 0.01);
+        candidateTime = idealTime + (Math.random() * 2 - 1) * searchRadius;
       }
 
-      // Apply day constraints
-      proposedTime = adjustToAllowedDay(proposedTime);
+      const candidate = new Date(candidateTime);
 
-      // Apply time constraints
-      proposedTime = applyTimeConstraints(proposedTime);
+      // Apply day constraints if specified
+      const dayAdjusted = applyDayConstraints(candidate, allowedDays);
+      if (!dayAdjusted) continue;
 
-      // Ensure within bounds and not in past
-      if (!isValidDate(proposedTime)) {
-        // Try to salvage by placing at start if before range
-        if (proposedTime < actualStartDate) {
-          proposedTime = new Date(actualStartDate);
-          proposedTime = adjustToAllowedDay(proposedTime);
-          proposedTime = applyTimeConstraints(proposedTime);
-        }
-        // If after end date, place earlier
-        else if (proposedTime > actualEndDate) {
-          const remainingVideos = videoCount - i;
-          proposedTime = new Date(actualEndDate.getTime() - remainingVideos * batchMinGapMs);
-          proposedTime = adjustToAllowedDay(proposedTime);
-          proposedTime = applyTimeConstraints(proposedTime);
-        }
+      // Apply time constraints if specified
+      const timeAdjusted = applyTimeConstraints(dayAdjusted, startTime, endTime);
+      if (!timeAdjusted) continue;
 
-        // Final validation
-        if (!isValidDate(proposedTime)) {
-          attempts++;
-          continue;
-        }
+      // Must be in future and within range
+      if (timeAdjusted < now || timeAdjusted > actualEndDate) continue;
+
+      // Calculate score - prioritize spread and batch gaps over existing conflicts
+      const score = calculateSpreadScore(
+        timeAdjusted,
+        scheduledDates,
+        idealTime,
+        batchMinGapMs,
+        batchMaxGapMs,
+        respectExisting
+      );
+
+      if (score > bestScore) {
+        bestScore = score;
+        bestDate = timeAdjusted;
       }
 
-      // Check conflicts with existing scheduled videos
-      let hasExistingConflict = false;
-      let minDistanceFromExisting = Infinity;
-
-      if (respectExisting && existingSchedule.length > 0) {
-        for (const existingDate of existingSchedule) {
-          const timeDiff = Math.abs(proposedTime.getTime() - existingDate.getTime());
-          minDistanceFromExisting = Math.min(minDistanceFromExisting, timeDiff);
-
-          if (timeDiff < existingMinGapMs) {
-            hasExistingConflict = true;
-            break;
-          }
-        }
-      }
-
-      // Check conflicts with newly scheduled videos in this batch
-      let hasBatchConflict = false;
-      let minDistanceFromBatch = Infinity;
-
-      for (const newDate of scheduledDates) {
-        const timeDiff = Math.abs(proposedTime.getTime() - newDate.getTime());
-        minDistanceFromBatch = Math.min(minDistanceFromBatch, timeDiff);
-
-        if (timeDiff < batchMinGapMs) {
-          hasBatchConflict = true;
-          break;
-        }
-      }
-
-      if (!hasExistingConflict && !hasBatchConflict) {
-        // Calculate score for this slot
-        let score = 0;
-
-        // Prefer larger gaps from batch videos
-        if (minDistanceFromBatch !== Infinity) {
-          score += (minDistanceFromBatch / batchMaxGapMs) * 100;
-        } else {
-          score += 100; // First video gets good score
-        }
-
-        // Prefer adequate gap from existing videos
-        if (respectExisting && minDistanceFromExisting !== Infinity) {
-          score += Math.min(minDistanceFromExisting / existingMinGapMs, 2) * 50;
-        } else {
-          score += 50; // No existing videos
-        }
-
-        // Prefer dates closer to target ideal gap
-        if (i > 0) {
-          const lastScheduled = scheduledDates[scheduledDates.length - 1];
-          const actualGap = proposedTime.getTime() - lastScheduled.getTime();
-          const gapDiff = Math.abs(actualGap - idealGap);
-          score += Math.max(0, 50 - (gapDiff / idealGap) * 50);
-        }
-
-        // Track best option
-        if (score > bestScore) {
-          bestScore = score;
-          bestProposedTime = new Date(proposedTime);
-        }
-
-        // If score is very good, accept immediately
-        if (score > 180 || attempts > maxAttempts * 0.6) {
-          scheduledDates.push(new Date(proposedTime));
-          allScheduledDates.push(new Date(proposedTime));
-          console.log(`Video ${i + 1} scheduled: ${proposedTime.toISOString()} (score: ${score.toFixed(2)})`);
-          break;
-        }
-      }
-
-      attempts++;
+      // Early exit if we found a very good candidate
+      if (score > 90 && attempt > 10) break;
     }
 
-    // Use best attempt if we exhausted all attempts
-    if (attempts >= maxAttempts) {
-      if (bestProposedTime && isValidDate(bestProposedTime)) {
-        console.warn(`Using best attempt for video ${i + 1} (score: ${bestScore.toFixed(2)})`);
-        scheduledDates.push(bestProposedTime);
-        allScheduledDates.push(bestProposedTime);
+    if (bestDate) {
+      scheduledDates.push(bestDate);
+      console.log(`Video ${i + 1} scheduled at ${bestDate.toISOString()} (score: ${bestScore.toFixed(2)})`);
+    } else {
+      // Fallback: place at calculated position even if constraints can't be fully met
+      const fallbackDate = new Date(idealTime);
+      const constrainedDate = applyAllConstraints(fallbackDate, allowedDays, startTime, endTime);
+      if (constrainedDate && constrainedDate >= now && constrainedDate <= actualEndDate) {
+        scheduledDates.push(constrainedDate);
+        console.warn(`Used fallback for video ${i + 1}`);
       } else {
-        console.error(`Could not find valid slot for video ${i + 1}`);
-        alert(`Warning: Could not find valid time slot for video ${i + 1}. Try expanding your date range or reducing minimum gaps.`);
+        // Last resort: linear placement with min gap
+        const lastDate = scheduledDates.length > 0 ?
+          scheduledDates[scheduledDates.length - 1] : actualStartDate;
+        const linearDate = new Date(lastDate.getTime() + batchMinGapMs);
+        scheduledDates.push(linearDate);
+        console.error(`Used linear fallback for video ${i + 1}`);
       }
     }
   }
 
-  // Final sort to ensure chronological order
-  scheduledDates.sort((a, b) => a.getTime() - b.getTime());
+  // Final optimization: try to improve spread by adjusting dates
+  const optimizedDates = optimizeSpread(scheduledDates, actualStartDate, actualEndDate, batchMinGapMs, batchMaxGapMs);
 
-  // Validate all dates are in future and within range
-  const invalidDates = scheduledDates.filter(d => !isValidDate(d));
-  if (invalidDates.length > 0) {
-    console.error('Invalid dates found:', invalidDates);
-    alert(`Error: Some dates are invalid. Please check your settings.`);
+  // Sort chronologically
+  optimizedDates.sort((a, b) => a.getTime() - b.getTime());
+
+  console.log('Final schedule analysis:', analyzeBatchSpread(optimizedDates));
+
+  return optimizedDates;
+}
+
+/**
+ * Calculate score prioritizing spread and batch distribution
+ */
+function calculateSpreadScore(candidate, scheduledDates, idealTime, batchMinGapMs, batchMaxGapMs, respectExisting) {
+  let score = 0;
+  const candidateTime = candidate.getTime();
+
+  // PRIMARY: Proximity to ideal distribution point (40% weight)
+  const timeDiff = Math.abs(candidateTime - idealTime);
+  const maxTimeDiff = batchMaxGapMs * 2;
+  const proximityScore = 40 * (1 - Math.min(timeDiff / maxTimeDiff, 1));
+  score += proximityScore;
+
+  // SECONDARY: Gap from other batch videos (30% weight)
+  let minBatchGap = Infinity;
+  let batchGapScore = 0;
+
+  if (scheduledDates.length > 0) {
+    for (const scheduledDate of scheduledDates) {
+      const gap = Math.abs(candidateTime - scheduledDate.getTime());
+      minBatchGap = Math.min(minBatchGap, gap);
+    }
+
+    // Prefer gaps close to ideal range
+    if (minBatchGap >= batchMinGapMs && minBatchGap <= batchMaxGapMs) {
+      batchGapScore = 30; // Perfect
+    } else if (minBatchGap < batchMinGapMs) {
+      // Allow some congestion within batch but penalize
+      batchGapScore = 15 * (minBatchGap / batchMinGapMs);
+    } else {
+      // Too far apart is better than too close
+      batchGapScore = 20;
+    }
+  } else {
+    batchGapScore = 30; // First video
+  }
+
+  score += batchGapScore;
+
+  // TERTIARY: Gap from existing videos (20% weight) - but we allow congestion
+  let existingGapScore = 20; // Default full score
+
+  if (respectExisting && existingSchedule.length > 0) {
+    let minExistingGap = Infinity;
+    for (const existingDate of existingSchedule) {
+      const gap = Math.abs(candidateTime - existingDate.getTime());
+      minExistingGap = Math.min(minExistingGap, gap);
+    }
+
+    // We allow congestion with existing videos, but prefer reasonable gaps
+    if (minExistingGap < batchMinGapMs) {
+      // Congestion allowed but penalized slightly
+      existingGapScore = 15;
+    }
+    // If gap is good, we keep the full 20 points
+  }
+
+  score += existingGapScore;
+
+  // SMALL BONUS: Avoid exact same times (10% weight)
+  let uniquenessBonus = 10;
+  for (const existingDate of existingSchedule) {
+    if (candidateTime === existingDate.getTime()) {
+      uniquenessBonus = 0;
+      break;
+    }
+  }
+  for (const scheduledDate of scheduledDates) {
+    if (candidateTime === scheduledDate.getTime()) {
+      uniquenessBonus = 0;
+      break;
+    }
+  }
+
+  score += uniquenessBonus;
+
+  return score;
+}
+
+/**
+ * Optimize the spread of scheduled dates
+ */
+function optimizeSpread(scheduledDates, startDate, endDate, batchMinGapMs, batchMaxGapMs) {
+  if (scheduledDates.length <= 1) return scheduledDates;
+
+  const optimized = [...scheduledDates].sort((a, b) => a.getTime() - b.getTime());
+  const totalTime = endDate.getTime() - startDate.getTime();
+  const idealGap = totalTime / (optimized.length + 1);
+
+  let improved = true;
+  let iterations = 0;
+
+  // Iteratively improve spread
+  while (improved && iterations < 50) {
+    improved = false;
+
+    for (let i = 0; i < optimized.length; i++) {
+      const currentTime = optimized[i].getTime();
+      const idealTime = startDate.getTime() + (i + 1) * idealGap;
+
+      // If we're not at ideal position, try to move closer
+      if (Math.abs(currentTime - idealTime) > idealGap * 0.1) {
+        const direction = idealTime > currentTime ? 1 : -1;
+        const moveAmount = Math.min(
+          Math.abs(idealTime - currentTime) * 0.5,
+          batchMaxGapMs * 0.1
+        );
+
+        const newTime = currentTime + direction * moveAmount;
+        const newDate = new Date(newTime);
+
+        // Check if move improves overall spread without violating major constraints
+        if (isMoveBeneficial(optimized, i, newDate, batchMinGapMs)) {
+          optimized[i] = newDate;
+          improved = true;
+        }
+      }
+    }
+
+    iterations++;
+  }
+
+  return optimized;
+}
+
+/**
+ * Check if moving a date improves overall spread
+ */
+function isMoveBeneficial(dates, index, newDate, batchMinGapMs) {
+  const newTime = newDate.getTime();
+
+  // Check gap with previous date
+  if (index > 0) {
+    const prevGap = newTime - dates[index - 1].getTime();
+    if (prevGap < batchMinGapMs * 0.8) return false; // Don't create severe congestion
+  }
+
+  // Check gap with next date
+  if (index < dates.length - 1) {
+    const nextGap = dates[index + 1].getTime() - newTime;
+    if (nextGap < batchMinGapMs * 0.8) return false;
+  }
+
+  return true;
+}
+
+/**
+ * Analyze batch spread quality
+ */
+function analyzeBatchSpread(scheduledDates) {
+  if (scheduledDates.length <= 1) {
+    return { averageGap: 0, minGap: 0, maxGap: 0, spreadEfficiency: 1 };
+  }
+
+  const gaps = [];
+  for (let i = 1; i < scheduledDates.length; i++) {
+    const gap = (scheduledDates[i] - scheduledDates[i - 1]) / (24 * 60 * 60 * 1000);
+    gaps.push(gap);
+  }
+
+  const averageGap = gaps.reduce((a, b) => a + b, 0) / gaps.length;
+  const minGap = Math.min(...gaps);
+  const maxGap = Math.max(...gaps);
+
+  // Calculate how well we're using the available time
+  const totalDuration = scheduledDates[scheduledDates.length - 1] - scheduledDates[0];
+  const optimalDuration = averageGap * (scheduledDates.length - 1);
+  const spreadEfficiency = totalDuration / optimalDuration;
+
+  return {
+    averageGap: averageGap.toFixed(1),
+    minGap: minGap.toFixed(1),
+    maxGap: maxGap.toFixed(1),
+    spreadEfficiency: spreadEfficiency.toFixed(2),
+    gaps: gaps.map(g => g.toFixed(1))
+  };
+}
+
+/**
+ * Helper function to apply day constraints
+ */
+function applyDayConstraints(date, allowedDays) {
+  if (allowedDays.length === 0) return new Date(date);
+
+  const result = new Date(date);
+  let attempts = 0;
+
+  while (!allowedDays.includes(result.getDay().toString()) && attempts < 7) {
+    result.setDate(result.getDate() + 1);
+    attempts++;
+  }
+
+  return attempts < 7 ? result : null;
+}
+
+/**
+ * Helper function to apply time constraints
+ */
+function applyTimeConstraints(date, startTime, endTime) {
+  if (!startTime || !endTime) return new Date(date);
+
+  const result = new Date(date);
+  const [startHour, startMinute] = startTime.split(':').map(Number);
+  const [endHour, endMinute] = endTime.split(':').map(Number);
+
+  const startTimeMinutes = startHour * 60 + startMinute;
+  const endTimeMinutes = endHour * 60 + endMinute;
+
+  // Random time within allowed window
+  const randomMinutes = startTimeMinutes + Math.random() * (endTimeMinutes - startTimeMinutes);
+  result.setHours(Math.floor(randomMinutes / 60), Math.floor(randomMinutes % 60), 0, 0);
+
+  return result;
+}
+
+/**
+ * Apply all constraints to a date
+ */
+function applyAllConstraints(date, allowedDays, startTime, endTime) {
+  const dayAdjusted = applyDayConstraints(date, allowedDays);
+  if (!dayAdjusted) return null;
+
+  return applyTimeConstraints(dayAdjusted, startTime, endTime);
+}
+
+
+/**
+ * Phase 1: Find all available time slots respecting constraints
+ */
+function findAvailableSlots(videoCount, startDate, endDate, batchMinGapMs, existingMinGapMs, respectExisting, allowedDays, startTime, endTime) {
+  const slots = [];
+  const now = new Date();
+  const totalDuration = endDate.getTime() - startDate.getTime();
+
+  // Create a grid of potential slots (more granular for better distribution)
+  const slotCount = Math.min(200, videoCount * 10); // Adaptive granularity
+  const baseGap = totalDuration / slotCount;
+
+  for (let i = 0; i < slotCount; i++) {
+    const baseTime = startDate.getTime() + i * baseGap;
+    const candidate = new Date(baseTime);
+
+    // Apply day constraints
+    const dayAdjusted = applyDayConstraints(candidate, allowedDays);
+    if (!dayAdjusted) continue;
+
+    // Apply time constraints
+    const timeAdjusted = applyTimeConstraints(dayAdjusted, startTime, endTime);
+    if (!timeAdjusted) continue;
+
+    // Check if in past
+    if (timeAdjusted < now) continue;
+
+    // Check existing schedule conflicts
+    if (respectExisting && hasExistingConflict(timeAdjusted, existingMinGapMs)) {
+      continue;
+    }
+
+    slots.push({
+      time: timeAdjusted.getTime(),
+      date: timeAdjusted,
+      score: calculateSlotScore(timeAdjusted, startDate, endDate, i, slotCount)
+    });
+  }
+
+  return slots.sort((a, b) => a.time - b.time);
+}
+
+/**
+ * Phase 2: Optimal distribution across available slots
+ */
+function distributeVideosOptimally(availableSlots, videoCount, batchMinGapMs, batchMaxGapMs) {
+  if (videoCount === 1) {
+    // For single video, pick the slot closest to the middle
+    const middleSlot = Math.floor(availableSlots.length / 2);
+    return [availableSlots[middleSlot].date];
+  }
+
+  // Use dynamic programming to find optimal distribution
+  const n = availableSlots.length;
+  const k = videoCount;
+
+  // DP table: dp[i][j] = best score for j videos using first i slots
+  const dp = Array(n + 1).fill(null).map(() =>
+    Array(k + 1).fill(-Infinity)
+  );
+  const choice = Array(n + 1).fill(null).map(() =>
+    Array(k + 1).fill(null)
+  );
+
+  // Base case: 0 videos
+  for (let i = 0; i <= n; i++) {
+    dp[i][0] = 0;
+  }
+
+  // Fill DP table
+  for (let i = 1; i <= n; i++) {
+    for (let j = 1; j <= Math.min(k, i); j++) {
+      // Option 1: Don't take current slot
+      if (dp[i-1][j] > dp[i][j]) {
+        dp[i][j] = dp[i-1][j];
+        choice[i][j] = { take: false, prev: i-1 };
+      }
+
+      // Option 2: Take current slot
+      for (let prev = 0; prev < i; prev++) {
+        if (prev === 0 || j === 1) {
+          // First video in sequence
+          const score = availableSlots[i-1].score + (prev === 0 ? 0 : dp[prev][j-1]);
+          if (score > dp[i][j]) {
+            dp[i][j] = score;
+            choice[i][j] = { take: true, prev };
+          }
+        } else {
+          // Check gap constraints with previous selection
+          const gap = availableSlots[i-1].time - availableSlots[prev-1].time;
+          if (gap >= batchMinGapMs && gap <= batchMaxGapMs) {
+            const spacingScore = calculateSpacingScore(gap, batchMinGapMs, batchMaxGapMs);
+            const score = availableSlots[i-1].score + spacingScore + dp[prev][j-1];
+            if (score > dp[i][j]) {
+              dp[i][j] = score;
+              choice[i][j] = { take: true, prev };
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Backtrack to find optimal selection
+  const selected = [];
+  let i = n, j = k;
+
+  while (j > 0 && i > 0) {
+    if (choice[i][j] && choice[i][j].take) {
+      selected.push(availableSlots[i-1].date);
+      i = choice[i][j].prev;
+      j--;
+    } else {
+      i--;
+    }
+  }
+
+  return selected.reverse();
+}
+
+/**
+ * Phase 3: Fallback scheduling that allows some congestion
+ */
+function scheduleWithCongestion(videoCount, startDate, endDate, batchMinGapMs, batchMaxGapMs, existingMinGapMs, respectExisting, allowedDays, startTime, endTime) {
+  const scheduledDates = [];
+  const now = new Date();
+  const totalTime = endDate.getTime() - startDate.getTime();
+
+  // Calculate ideal distribution points
+  const idealPoints = [];
+  for (let i = 0; i < videoCount; i++) {
+    const idealPosition = (i + 1) / (videoCount + 1);
+    idealPoints.push(startDate.getTime() + totalTime * idealPosition);
+  }
+
+  for (let i = 0; i < videoCount; i++) {
+    let bestDate = null;
+    let bestScore = -Infinity;
+    const idealTime = idealPoints[i];
+
+    // Try multiple candidate positions around ideal point
+    for (let attempt = 0; attempt < 50; attempt++) {
+      let candidateTime;
+
+      if (attempt === 0) {
+        candidateTime = idealTime;
+      } else {
+        // Search in expanding radius around ideal point
+        const searchRadius = Math.min(totalTime * 0.3, attempt * totalTime * 0.02);
+        candidateTime = idealTime + (Math.random() * 2 - 1) * searchRadius;
+      }
+
+      const candidate = new Date(candidateTime);
+
+      // Apply constraints
+      const dayAdjusted = applyDayConstraints(candidate, allowedDays);
+      if (!dayAdjusted) continue;
+
+      const timeAdjusted = applyTimeConstraints(dayAdjusted, startTime, endTime);
+      if (!timeAdjusted || timeAdjusted < now || timeAdjusted > endDate) continue;
+
+      // Calculate score for this candidate
+      const score = calculateCandidateScore(
+        timeAdjusted,
+        scheduledDates,
+        idealTime,
+        batchMinGapMs,
+        batchMaxGapMs,
+        existingMinGapMs,
+        respectExisting
+      );
+
+      if (score > bestScore) {
+        bestScore = score;
+        bestDate = timeAdjusted;
+      }
+    }
+
+    if (bestDate) {
+      scheduledDates.push(bestDate);
+    } else {
+      // Last resort: place at end with minimum gap
+      const lastDate = scheduledDates.length > 0 ?
+        scheduledDates[scheduledDates.length - 1] : startDate;
+      const fallbackDate = new Date(lastDate.getTime() + batchMinGapMs);
+      const constrainedDate = applyAllConstraints(fallbackDate, allowedDays, startTime, endTime);
+      if (constrainedDate && constrainedDate <= endDate) {
+        scheduledDates.push(constrainedDate);
+      }
+    }
   }
 
   return scheduledDates;
 }
+
+/**
+ * Helper function to apply day constraints
+ */
+function applyDayConstraints(date, allowedDays) {
+  if (allowedDays.length === 0) return new Date(date);
+
+  const result = new Date(date);
+  let attempts = 0;
+
+  while (!allowedDays.includes(result.getDay().toString()) && attempts < 7) {
+    result.setDate(result.getDate() + 1);
+    attempts++;
+  }
+
+  return attempts < 7 ? result : null;
+}
+
+/**
+ * Helper function to apply time constraints
+ */
+function applyTimeConstraints(date, startTime, endTime) {
+  if (!startTime || !endTime) return new Date(date);
+
+  const result = new Date(date);
+  const [startHour, startMinute] = startTime.split(':').map(Number);
+  const [endHour, endMinute] = endTime.split(':').map(Number);
+
+  const startTimeMinutes = startHour * 60 + startMinute;
+  const endTimeMinutes = endHour * 60 + endMinute;
+
+  // Random time within allowed window
+  const randomMinutes = startTimeMinutes + Math.random() * (endTimeMinutes - startTimeMinutes);
+  result.setHours(Math.floor(randomMinutes / 60), Math.floor(randomMinutes % 60), 0, 0);
+
+  return result;
+}
+
+/**
+ * Apply all constraints to a date
+ */
+function applyAllConstraints(date, allowedDays, startTime, endTime) {
+  const dayAdjusted = applyDayConstraints(date, allowedDays);
+  if (!dayAdjusted) return null;
+
+  return applyTimeConstraints(dayAdjusted, startTime, endTime);
+}
+
+/**
+ * Check for conflicts with existing schedule
+ */
+function hasExistingConflict(date, existingMinGapMs) {
+  return existingSchedule.some(existingDate => {
+    const timeDiff = Math.abs(date.getTime() - existingDate.getTime());
+    return timeDiff < existingMinGapMs;
+  });
+}
+
+/**
+ * Calculate slot score for distribution
+ */
+function calculateSlotScore(date, startDate, endDate, index, totalSlots) {
+  const time = date.getTime();
+  const startTime = startDate.getTime();
+  const endTime = endDate.getTime();
+
+  // Prefer slots in the middle of the time window
+  const position = (time - startTime) / (endTime - startTime);
+  const centerScore = 1 - Math.abs(position - 0.5) * 2;
+
+  // Prefer evenly distributed slots
+  const distributionScore = 1 - Math.abs(index / totalSlots - position);
+
+  return centerScore + distributionScore;
+}
+
+/**
+ * Calculate spacing score between videos
+ */
+function calculateSpacingScore(gap, minGap, maxGap) {
+  const idealGap = (minGap + maxGap) / 2;
+  const gapDiff = Math.abs(gap - idealGap);
+  const maxDiff = (maxGap - minGap) / 2;
+
+  return 1 - (gapDiff / maxDiff);
+}
+
+/**
+ * Calculate candidate score for fallback scheduling
+ */
+function calculateCandidateScore(candidate, scheduledDates, idealTime, batchMinGapMs, batchMaxGapMs, existingMinGapMs, respectExisting) {
+  let score = 0;
+
+  // Proximity to ideal distribution point (50%)
+  const timeDiff = Math.abs(candidate.getTime() - idealTime);
+  const maxTimeDiff = batchMaxGapMs * 3;
+  score += 50 * (1 - Math.min(timeDiff / maxTimeDiff, 1));
+
+  // Gap from existing videos (30%)
+  if (respectExisting) {
+    let minExistingGap = Infinity;
+    for (const existingDate of existingSchedule) {
+      const gap = Math.abs(candidate.getTime() - existingDate.getTime());
+      minExistingGap = Math.min(minExistingGap, gap);
+    }
+
+    if (minExistingGap < Infinity) {
+      const existingGapScore = Math.min(minExistingGap / existingMinGapMs, 2);
+      score += 30 * existingGapScore;
+    } else {
+      score += 30;
+    }
+  }
+
+  // Gap from other scheduled videos (20%)
+  if (scheduledDates.length > 0) {
+    let minBatchGap = Infinity;
+    for (const scheduledDate of scheduledDates) {
+      const gap = Math.abs(candidate.getTime() - scheduledDate.getTime());
+      minBatchGap = Math.min(minBatchGap, gap);
+    }
+
+    const batchGapScore = minBatchGap >= batchMinGapMs ?
+      1 : Math.max(0, minBatchGap / batchMinGapMs);
+    score += 20 * batchGapScore;
+  } else {
+    score += 20;
+  }
+
+  return score;
+}
+
 
 /**
  * Analyze schedule distribution quality

@@ -12,7 +12,14 @@ export async function refreshAccessToken() {
   try {
     const { credentials } = await oauth2Client.refreshAccessToken();
     oauth2Client.setCredentials(credentials);
-    console.log(credentials.access_token);
+
+    // Don't log the actual token - security risk
+    console.log('Access token refreshed successfully');
+
+    if (!credentials.access_token) {
+      throw new Error('No access token returned from refresh');
+    }
+
     return credentials.access_token;
   } catch (error: Error | any) {
     if (error.response && error.response.data.error === 'invalid_grant') {
@@ -21,7 +28,7 @@ export async function refreshAccessToken() {
       );
       throw new Error('Refresh token expired. Re-authenticate the user.');
     } else {
-      console.error('Error refreshing access token:', error);
+      console.error('Error refreshing access token:', error.message);
       throw error;
     }
   }

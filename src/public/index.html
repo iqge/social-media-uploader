@@ -112,6 +112,145 @@
       margin-top: 5px;
       line-height: 1.4;
     }
+
+    .config-section {
+      background: #fff3cd;
+      padding: 20px;
+      border-radius: 12px;
+      margin-bottom: 25px;
+      border: 2px solid #ffc107;
+    }
+
+    .config-section h3 {
+      color: #856404;
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .config-buttons {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .btn-config {
+      background: #ffc107;
+      color: #212529;
+    }
+
+    .btn-config:hover {
+      background: #e0a800;
+    }
+
+    /* Config Modal Styles */
+    .config-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 1000;
+      overflow-y: auto;
+    }
+
+    .config-modal.active {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .config-modal-content {
+      background: white;
+      padding: 30px;
+      border-radius: 15px;
+      max-width: 600px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .config-modal-content h2 {
+      color: #333;
+      margin-bottom: 20px;
+    }
+
+    #config-list {
+      margin: 20px 0;
+    }
+
+    .config-item {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-left: 4px solid #667eea;
+    }
+
+    .config-item-info {
+      flex: 1;
+    }
+
+    .config-item-info strong {
+      display: block;
+      color: #333;
+      font-size: 16px;
+      margin-bottom: 5px;
+    }
+
+    .config-item-info small {
+      color: #666;
+      font-size: 12px;
+    }
+
+    .config-item-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn-small {
+      padding: 6px 12px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-weight: 600;
+    }
+
+    .btn-load {
+      background: #667eea;
+      color: white;
+    }
+
+    .btn-load:hover {
+      background: #5568d3;
+    }
+
+    .btn-delete {
+      background: #dc3545;
+      color: white;
+    }
+
+    .btn-delete:hover {
+      background: #c82333;
+    }
+
+    .close-config-modal {
+      background: #6c757d;
+      margin-top: 20px;
+    }
+
+    .close-config-modal:hover {
+      background: #5a6268;
+    }
   </style>
 </head>
 <body>
@@ -159,6 +298,16 @@
               <div style="color: #666;">or drag and drop here</div>
             </div>
           </label>
+        </div>
+
+        <!-- Configuration Save/Load Section -->
+        <div class="config-section">
+          <h3>💾 Configuration</h3>
+          <p style="color: #856404; margin-bottom: 15px;">Save your current settings to browser storage with a name, or load previously saved configurations.</p>
+          <div class="config-buttons">
+            <button type="button" id="save-config-btn" class="btn btn-config">💾 Save Configuration</button>
+            <button type="button" id="load-config-btn" class="btn btn-config">📂 Load Configuration</button>
+          </div>
         </div>
 
         <!-- Smart Schedule Settings -->
@@ -229,9 +378,9 @@
 
           <div class="input-group">
             <label for="bulk-title">Titles (one per line - will be randomly assigned)</label>
-            <textarea id="bulk-title" placeholder="Enter one title per line&#10;Each video will get a unique title&#10;Title 1&#10;Title 2&#10;Title 3" rows="4"></textarea>
+            <textarea id="bulk-title" placeholder="Enter one title per line&#10;Use {song_name} to substitute song from filename&#10;Example: Astariel presents {song_name} for fun&#10;Title without {song_name} stays as-is" rows="4"></textarea>
             <small style="color: #666; display: block; margin-top: 5px;">
-              Enter multiple titles (one per line). Each video will randomly get one unique title.
+              🎵 Use {song_name} placeholder to auto-substitute song names from filenames (uses __songName__ pattern).
             </small>
             <div id="title-counter" class="title-counter" style="display: none;"></div>
           </div>
@@ -321,6 +470,16 @@
       <h2>Title & Description Preview</h2>
       <div id="preview-items"></div>
       <button type="button" id="close-preview" class="btn close-preview">Close Preview</button>
+    </div>
+  </div>
+
+  <!-- Configuration Modal -->
+  <div id="config-modal" class="config-modal">
+    <div class="config-modal-content">
+      <h2>📂 Saved Configurations</h2>
+      <p style="color: #666; margin-bottom: 20px;">Select a configuration to load:</p>
+      <div id="config-list"></div>
+      <button type="button" id="close-config-modal" class="btn close-config-modal">Close</button>
     </div>
   </div>
 
