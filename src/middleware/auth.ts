@@ -37,7 +37,7 @@ export const refreshMiddleware = async (
   const needsRefresh =
     !credentials?.access_token ||
     (credentials?.expiry_date &&
-     credentials.expiry_date <= Date.now() + 5 * 60 * 1000);
+      credentials.expiry_date <= Date.now() + 5 * 60 * 1000);
 
   if (needsRefresh) {
     if (!process.env.REFRESH_TOKEN && !credentials?.refresh_token) {

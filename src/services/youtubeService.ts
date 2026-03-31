@@ -148,7 +148,7 @@ export const getVideoStats = async (videoId: string) => {
   return response.data.items[0];
 };
 
-// Optimized function to fetch scheduled videos with minimal quota usage
+// Fetch ALL scheduled videos from YouTube API with full pagination
 const fetchScheduledVideosFromAPI = async (): Promise<Date[]> => {
   const scheduledVideos: Date[] = [];
 
@@ -170,57 +170,103 @@ const fetchScheduledVideosFromAPI = async (): Promise<Date[]> => {
       return [];
     }
 
-    // Step 2: Get videos from uploads playlist (1 quota unit per request)
-    // This is much cheaper than search.list (which costs 100 units)
+    // Step 2: Paginate through ALL videos in the uploads playlist
+    // playlistItems.list costs 1 quota unit per request, videos.list costs 1 per request
+    // This is much cheaper than search.list (100 units per request)
     let pageToken: string | undefined = undefined;
-    let fetchedCount = 0;
-    const maxToFetch = 100; // Limit to avoid excessive quota usage
+    let totalFetched = 0;
+    // Track consecutive pages with zero scheduled videos to stop early
+    // when we've passed through all recent/scheduled content
+    let consecutivePagesWithNoScheduled = 0;
+    const MAX_EMPTY_PAGES = 3; // Stop after 3 consecutive pages with no scheduled videos
 
-    do {
-      const playlistResponse = await youtube.playlistItems.list({
-        part: ['contentDetails'],
+    // Use while(true) with explicit breaks to avoid TypeScript circular reference issues
+    while (true) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const playlistResponse: any = await youtube.playlistItems.list({
+        part: ['contentDetails', 'status'],
         playlistId: uploadsPlaylistId,
         maxResults: 50,
         pageToken,
       });
 
-      if (playlistResponse.data.items) {
-        const videoIds = playlistResponse.data.items
-          .map((item) => item.contentDetails?.videoId)
-          .filter((id): id is string => !!id);
+      const items = playlistResponse.data.items as any[] | undefined;
+      if (!items || items.length === 0) break;
 
-        if (videoIds.length > 0) {
-          // Step 3: Get video details in batch (1 quota unit per 50 videos)
-          const videosResponse = await youtube.videos.list({
-            part: ['status'],
-            id: videoIds,
-          });
+      const videoIds: string[] = [];
+      for (const item of items) {
+        const videoId = item.contentDetails?.videoId;
+        if (videoId) {
+          videoIds.push(videoId as string);
+        }
+      }
 
-          if (videosResponse.data.items) {
-            for (const video of videosResponse.data.items) {
-              // Only include videos scheduled in the future
-              if (video.status?.publishAt) {
-                const publishDate = new Date(video.status.publishAt);
-                if (publishDate > new Date()) {
-                  scheduledVideos.push(publishDate);
-                }
+      let foundScheduledOnThisPage = false;
+
+      if (videoIds.length > 0) {
+        // Step 3: Get video details in batch (1 quota unit per 50 videos)
+        // Request both status and snippet to get publishAt and upload date
+        const videosResponse = await youtube.videos.list({
+          part: ['status', 'snippet'],
+          id: videoIds,
+        });
+
+        if (videosResponse.data.items) {
+          for (const video of videosResponse.data.items) {
+            // Check for scheduled (private with publishAt) videos
+            const publishAtStr = video.status?.publishAt;
+            if (publishAtStr) {
+              const publishDate = new Date(publishAtStr);
+              if (publishDate > new Date()) {
+                scheduledVideos.push(publishDate);
+                foundScheduledOnThisPage = true;
+                console.log(
+                  `Found scheduled video: "${video.snippet?.title}" → ${publishDate.toISOString()}`
+                );
               }
             }
           }
         }
       }
 
-      fetchedCount += playlistResponse.data.items?.length || 0;
-      pageToken = playlistResponse.data.nextPageToken || undefined;
+      totalFetched += items.length;
+      const nextPageToken: string | null | undefined = playlistResponse.data.nextPageToken;
+      pageToken = nextPageToken ? nextPageToken : undefined;
 
-      // Stop after fetching enough or reaching limit
-      if (fetchedCount >= maxToFetch) break;
-    } while (pageToken);
+      // Track consecutive empty pages to avoid fetching entire back-catalog
+      if (foundScheduledOnThisPage) {
+        consecutivePagesWithNoScheduled = 0;
+      } else {
+        consecutivePagesWithNoScheduled++;
+      }
+
+      console.log(
+        `Fetched page: ${items.length} videos (total: ${totalFetched}), ` +
+          `scheduled found so far: ${scheduledVideos.length}, ` +
+          `empty pages streak: ${consecutivePagesWithNoScheduled}`
+      );
+
+      // Stop if we've had too many consecutive pages without scheduled videos
+      // This prevents scanning thousands of old published videos
+      if (consecutivePagesWithNoScheduled >= MAX_EMPTY_PAGES && totalFetched > 50) {
+        console.log(
+          `Stopping pagination after ${MAX_EMPTY_PAGES} consecutive pages with no scheduled videos`
+        );
+        break;
+      }
+
+      // No more pages
+      if (!pageToken) break;
+    }
+
+    console.log(
+      `Total scheduled videos found: ${scheduledVideos.length} (scanned ${totalFetched} videos)`
+    );
 
     // Sort dates in ascending order
     return scheduledVideos.sort((a, b) => a.getTime() - b.getTime());
   } catch (error: any) {
-    console.error('Error fetching scheduled videos:', error);
+    console.error('Error fetching scheduled videos:', error.message || error);
     // Return empty array instead of throwing to avoid blocking uploads
     return [];
   }

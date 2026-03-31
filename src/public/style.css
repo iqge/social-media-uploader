@@ -508,4 +508,32 @@
       .stats-grid {
         grid-template-columns: 1fr;
       }
+
+      .platform-tabs {
+        flex-direction: column;
+      }
+
+      .platform-tab {
+        width: 100%;
+        justify-content: center;
+      }
+
+      .auth-section {
+        flex-direction: column;
+      }
+    }
+
+    /* Number input styling */
+    input[type="number"] {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 14px;
+      transition: border-color 0.3s ease;
+    }
+
+    input[type="number"]:focus {
+      outline: none;
+      border-color: #667eea;
     }

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>YouTube Uploader Pro</title>
+  <title>Social Media Uploader Pro</title>
   <link rel="stylesheet" href="style.css">
   <style>
     .schedule-section {
@@ -251,15 +251,176 @@
     .close-config-modal:hover {
       background: #5a6268;
     }
+
+    /* Platform Selector Styles */
+    .platform-selector {
+      background: white;
+      padding: 20px;
+      border-radius: 15px;
+      margin-bottom: 20px;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+    }
+
+    .platform-selector h2 {
+      color: #333;
+      margin-bottom: 15px;
+      font-size: 1.3em;
+    }
+
+    .platform-tabs {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .platform-tab {
+      padding: 12px 24px;
+      border: 2px solid #e0e0e0;
+      border-radius: 25px;
+      background: white;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-size: 15px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .platform-tab:hover {
+      border-color: #667eea;
+      background: #f8f9ff;
+    }
+
+    .platform-tab.active {
+      border-color: #667eea;
+      background: #667eea;
+      color: white;
+    }
+
+    .platform-tab[data-platform="youtube"] {
+      --platform-color: #FF0000;
+    }
+
+    .platform-tab[data-platform="youtube"].active {
+      background: #FF0000;
+      border-color: #FF0000;
+    }
+
+    .platform-tab[data-platform="instagram"] {
+      --platform-color: #E4405F;
+    }
+
+    .platform-tab[data-platform="instagram"].active {
+      background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888);
+      border-color: #E4405F;
+    }
+
+    .platform-tab[data-platform="facebook"] {
+      --platform-color: #1877F2;
+    }
+
+    .platform-tab[data-platform="facebook"].active {
+      background: #1877F2;
+      border-color: #1877F2;
+    }
+
+    .platform-icon {
+      font-size: 20px;
+    }
+
+    /* Platform-specific auth buttons */
+    .auth-section {
+      display: flex;
+      gap: 15px;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .auth-btn-meta {
+      background: #1877F2;
+      color: white;
+      padding: 12px 30px;
+      border: none;
+      border-radius: 25px;
+      font-size: 16px;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+      transition: all 0.3s ease;
+    }
+
+    .auth-btn-meta:hover {
+      background: #0d65d9;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+
+    .meta-status {
+      display: inline-block;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .meta-status.connected {
+      background: #d4edda;
+      color: #155724;
+    }
+
+    .meta-status.disconnected {
+      background: #f8d7da;
+      color: #721c24;
+    }
+
+    /* Instagram-specific note */
+    .ig-scheduling-note {
+      background: #fff3cd;
+      border-left: 4px solid #ffc107;
+      padding: 12px 15px;
+      margin: 15px 0;
+      border-radius: 4px;
+      font-size: 14px;
+      color: #856404;
+    }
+
+    /* Platform-specific sections visibility */
+    .platform-content {
+      display: none;
+    }
+
+    .platform-content.active {
+      display: block;
+    }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>YouTube Uploader Pro</h1>
+    <h1>Social Media Uploader Pro</h1>
+
+    <!-- Platform Selector -->
+    <div class="platform-selector">
+      <h2>Select Platform</h2>
+      <div class="platform-tabs">
+        <button class="platform-tab active" data-platform="youtube">
+          <span class="platform-icon">▶️</span> YouTube
+        </button>
+        <button class="platform-tab" data-platform="instagram">
+          <span class="platform-icon">📸</span> Instagram
+        </button>
+        <button class="platform-tab" data-platform="facebook">
+          <span class="platform-icon">👤</span> Facebook
+        </button>
+      </div>
+    </div>
 
     <!-- Authentication Section -->
-    <div class="auth-section">
-      <a href="/auth" class="auth-btn">Authenticate with YouTube</a>
+    <div class="auth-section" style="background: white; padding: 20px; border-radius: 15px; margin-bottom: 20px; box-shadow: 0 8px 16px rgba(0,0,0,0.1); text-align: center;">
+      <a href="/auth" class="auth-btn" id="youtube-auth-btn">Authenticate with YouTube</a>
+      <a href="/meta/auth" class="auth-btn-meta" id="meta-auth-btn" style="display: none;">Authenticate with Meta (Facebook/Instagram)</a>
+      <span id="meta-status" class="meta-status disconnected" style="display: none;">⚪ Not connected</span>
     </div>
 
     <!-- Existing Schedule Section -->
@@ -269,25 +430,28 @@
       <div id="schedule-display"></div>
     </div>
 
-    <!-- Video Stats Section -->
-    <div class="stats-section">
-      <h2>Video Statistics</h2>
-      <form id="stats-form">
-        <input type="hidden" id="access_token_stats" value="">
-        <div class="input-group">
-          <label for="video-id">Video ID</label>
-          <input type="text" id="video-id" placeholder="Enter YouTube Video ID" required>
-        </div>
-        <button type="submit" class="btn">Get Stats</button>
-      </form>
-      <div id="video-stats"></div>
+    <!-- Video Stats Section (YouTube) -->
+    <div class="platform-content active" data-platform-content="youtube-stats">
+      <div class="stats-section">
+        <h2>Video Statistics</h2>
+        <form id="stats-form">
+          <input type="hidden" id="access_token_stats" value="">
+          <div class="input-group">
+            <label for="video-id">Video ID</label>
+            <input type="text" id="video-id" placeholder="Enter YouTube Video ID" required>
+          </div>
+          <button type="submit" class="btn">Get Stats</button>
+        </form>
+        <div id="video-stats"></div>
+      </div>
     </div>
 
     <!-- Upload Section -->
     <div class="upload-section">
-      <h2>Upload Videos</h2>
+      <h2 id="upload-section-title">Upload Videos</h2>
       <form id="upload-form" enctype="multipart/form-data" method="POST">
         <input type="hidden" name="access_token" id="access_token">
+        <input type="hidden" name="platform" id="selected-platform" value="youtube">
 
         <div class="file-input-wrapper">
           <input type="file" id="video-input" name="videos" accept="video/*" multiple required>
@@ -300,6 +464,11 @@
           </label>
         </div>
 
+        <!-- Instagram scheduling note -->
+        <div class="ig-scheduling-note platform-content" data-platform-content="instagram-note">
+          ⚠️ <strong>Instagram does not support scheduling.</strong> All Reels will be published immediately upon upload. Scheduled dates will be ignored for Instagram.
+        </div>
+
         <!-- Configuration Save/Load Section -->
         <div class="config-section">
           <h3>💾 Configuration</h3>
@@ -310,8 +479,8 @@
           </div>
         </div>
 
-        <!-- Smart Schedule Settings -->
-        <div class="smart-schedule-settings">
+        <!-- Smart Schedule Settings (YouTube & Facebook only) -->
+        <div class="smart-schedule-settings" id="smart-schedule-section">
           <h3>Smart Scheduling</h3>
           <div class="checkbox-group">
             <input type="checkbox" id="enable-smart-schedule" name="enableSmartSchedule">
@@ -376,7 +545,8 @@
         <div class="bulk-inputs">
           <h3>Bulk Settings (Apply to All Videos)</h3>
 
-          <div class="input-group">
+          <!-- YouTube & Facebook: Title field -->
+          <div class="input-group platform-field" data-platforms="youtube,facebook">
             <label for="bulk-title">Titles (one per line - will be randomly assigned)</label>
             <textarea id="bulk-title" placeholder="Enter one title per line&#10;Use {song_name} to substitute song from filename&#10;Example: Astariel presents {song_name} for fun&#10;Title without {song_name} stays as-is" rows="4"></textarea>
             <small style="color: #666; display: block; margin-top: 5px;">
@@ -385,7 +555,17 @@
             <div id="title-counter" class="title-counter" style="display: none;"></div>
           </div>
 
-          <div class="input-group">
+          <!-- Instagram: Caption field -->
+          <div class="input-group platform-field" data-platforms="instagram" style="display: none;">
+            <label for="bulk-caption">Caption</label>
+            <textarea id="bulk-caption" placeholder="Enter caption for your Reels&#10;Use hashtags and mentions" rows="4"></textarea>
+            <small style="color: #666; display: block; margin-top: 5px;">
+              📝 This caption will be applied to all Reels. You can customize per-video after applying.
+            </small>
+          </div>
+
+          <!-- YouTube & Facebook: Description field -->
+          <div class="input-group platform-field" data-platforms="youtube,facebook">
             <label for="bulk-description">Description</label>
             <textarea id="bulk-description" placeholder="Video description (the selected title will be automatically prefixed)"></textarea>
             <small style="color: #666; display: block; margin-top: 5px;">
@@ -393,58 +573,71 @@
             </small>
           </div>
 
-          <button type="button" id="preview-bulk" class="btn preview-btn">Preview Title/Description Format</button>
+          <button type="button" id="preview-bulk" class="btn preview-btn platform-field" data-platforms="youtube,facebook">Preview Title/Description Format</button>
 
-          <div class="input-group">
+          <!-- YouTube: Tags field -->
+          <div class="input-group platform-field" data-platforms="youtube">
             <label for="bulk-tags">Tags (comma separated)</label>
             <input type="text" id="bulk-tags" placeholder="tag1, tag2, tag3">
           </div>
 
-          <div class="input-group">
-            <label for="bulk-start-date">Start Date & Time</label>
-            <input type="datetime-local" id="bulk-start-date">
-          </div>
-
-          <div class="input-group">
-            <label for="bulk-end-date">End Date & Time</label>
-            <input type="datetime-local" id="bulk-end-date">
-          </div>
-
-          <div id="schedule-options" class="schedule-options" style="display: none;">
-            <h4 style="margin-bottom: 10px;">Schedule Options</h4>
+          <!-- YouTube & Facebook: Date fields -->
+          <div class="platform-field" data-platforms="youtube,facebook">
+            <div class="input-group">
+              <label for="bulk-start-date">Start Date & Time</label>
+              <input type="datetime-local" id="bulk-start-date">
+            </div>
 
             <div class="input-group">
-              <label>Select Days</label>
-              <div class="days-selector" id="bulk-days">
-                <button type="button" class="day-btn" data-day="0">Sun</button>
-                <button type="button" class="day-btn" data-day="1">Mon</button>
-                <button type="button" class="day-btn" data-day="2">Tue</button>
-                <button type="button" class="day-btn" data-day="3">Wed</button>
-                <button type="button" class="day-btn" data-day="4">Thu</button>
-                <button type="button" class="day-btn" data-day="5">Fri</button>
-                <button type="button" class="day-btn" data-day="6">Sat</button>
-              </div>
+              <label for="bulk-end-date">End Date & Time</label>
+              <input type="datetime-local" id="bulk-end-date">
             </div>
 
-            <div class="time-inputs">
+            <div id="schedule-options" class="schedule-options" style="display: none;">
+              <h4 style="margin-bottom: 10px;">Schedule Options</h4>
+
               <div class="input-group">
-                <label for="bulk-start-time">Start Time</label>
-                <input type="time" id="bulk-start-time">
+                <label>Select Days</label>
+                <div class="days-selector" id="bulk-days">
+                  <button type="button" class="day-btn" data-day="0">Sun</button>
+                  <button type="button" class="day-btn" data-day="1">Mon</button>
+                  <button type="button" class="day-btn" data-day="2">Tue</button>
+                  <button type="button" class="day-btn" data-day="3">Wed</button>
+                  <button type="button" class="day-btn" data-day="4">Thu</button>
+                  <button type="button" class="day-btn" data-day="5">Fri</button>
+                  <button type="button" class="day-btn" data-day="6">Sat</button>
+                </div>
               </div>
-              <div class="input-group">
-                <label for="bulk-end-time">End Time</label>
-                <input type="time" id="bulk-end-time">
+
+              <div class="time-inputs">
+                <div class="input-group">
+                  <label for="bulk-start-time">Start Time</label>
+                  <input type="time" id="bulk-start-time">
+                </div>
+                <div class="input-group">
+                  <label for="bulk-end-time">End Time</label>
+                  <input type="time" id="bulk-end-time">
+                </div>
               </div>
             </div>
           </div>
 
-          <div class="checkbox-group">
-            <input type="checkbox" id="bulk-is-18-plus">
-            <label for="bulk-is-18-plus">Mark as 18+ (Age Restricted)</label>
+          <!-- Instagram: Share to Feed toggle -->
+          <div class="checkbox-group platform-field" data-platforms="instagram" style="display: none;">
+            <input type="checkbox" id="bulk-share-to-feed" checked>
+            <label for="bulk-share-to-feed">Share Reels to Feed</label>
           </div>
 
-          <div class="age-restriction-note">
-            <strong>Important:</strong> YouTube API does not support automatic age restriction. Videos marked as 18+ will need manual age restriction in YouTube Studio after upload. Links will be provided.
+          <!-- YouTube: 18+ toggle -->
+          <div class="platform-field" data-platforms="youtube">
+            <div class="checkbox-group">
+              <input type="checkbox" id="bulk-is-18-plus">
+              <label for="bulk-is-18-plus">Mark as 18+ (Age Restricted)</label>
+            </div>
+
+            <div class="age-restriction-note">
+              <strong>Important:</strong> YouTube API does not support automatic age restriction. Videos marked as 18+ will need manual age restriction in YouTube Studio after upload. Links will be provided.
+            </div>
           </div>
 
           <button type="button" id="apply-bulk" class="btn">Apply to All Videos</button>
@@ -452,13 +645,13 @@
 
         <div id="video-forms-container" class="video-forms-container"></div>
 
-        <button type="submit" class="btn" style="width: 100%; margin-top: 20px; padding: 16px;">
+        <button type="submit" class="btn" id="upload-submit-btn" style="width: 100%; margin-top: 20px; padding: 16px;">
           Upload All Videos
         </button>
 
         <div class="loader" id="loader">
           <div class="spinner"></div>
-          <div>Uploading videos... Please wait</div>
+          <div id="loader-text">Uploading videos... Please wait</div>
         </div>
       </form>
     </div>
