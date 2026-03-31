@@ -18,10 +18,7 @@ app.use(loggingMiddleware);
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Serve temp-media files for Instagram Reels upload (requires public URL)
-app.use(
-  '/temp-media',
-  express.static(path.join(__dirname, '../temp-media'))
-);
+app.use('/temp-media', express.static(path.join(__dirname, '../temp-media')));
 
 // Auth routes DON'T need the refresh middleware (they handle auth themselves)
 app.use('/', authRouter);

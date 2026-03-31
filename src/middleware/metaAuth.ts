@@ -1,7 +1,10 @@
 // middleware/metaAuth.ts - Meta token validation and refresh middleware
 import { Request, Response, NextFunction } from 'express';
 import { metaTokenStore } from '../config/meta';
-import { validateToken, refreshLongLivedToken } from '../services/metaAuthService';
+import {
+  validateToken,
+  refreshLongLivedToken,
+} from '../services/metaAuthService';
 import logger from '../utils/logger';
 
 /**
@@ -59,7 +62,8 @@ export const metaAuthMiddleware = async (
         // Don't block the request if page token is still valid
         if (!hasPageToken) {
           return res.status(401).json({
-            error: 'Meta token expired and refresh failed. Please re-authenticate.',
+            error:
+              'Meta token expired and refresh failed. Please re-authenticate.',
             redirectTo: '/meta/auth',
           });
         }

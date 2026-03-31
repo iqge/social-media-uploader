@@ -107,9 +107,7 @@ router.post(
             `Reel ${index + 1} uploaded successfully. Media ID: ${result.mediaId}`
           );
         } catch (error: any) {
-          logger.error(
-            `Error uploading Reel ${index + 1}: ${error.message}`
-          );
+          logger.error(`Error uploading Reel ${index + 1}: ${error.message}`);
           errors.push({
             file: file.originalname,
             error: error.message,

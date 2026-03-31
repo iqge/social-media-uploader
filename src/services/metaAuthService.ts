@@ -184,10 +184,7 @@ export async function completeOAuthFlow(code: string): Promise<{
   // Step 4: Get Instagram Business Account ID
   let instagramAccountId = '';
   try {
-    instagramAccountId = await getInstagramBusinessAccountId(
-      pageId,
-      pageToken
-    );
+    instagramAccountId = await getInstagramBusinessAccountId(pageId, pageToken);
   } catch (error: any) {
     logger.warn(
       `Could not get Instagram account: ${error.message}. Instagram uploads will not work.`

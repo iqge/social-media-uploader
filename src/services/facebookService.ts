@@ -43,7 +43,9 @@ export async function uploadPageVideo(
   }
 
   if (!pageToken) {
-    throw new Error('No Meta page access token available. Please authenticate first.');
+    throw new Error(
+      'No Meta page access token available. Please authenticate first.'
+    );
   }
 
   // Validate file extension
@@ -107,9 +109,7 @@ export async function uploadPageVideo(
   });
 
   if (!response.data.id) {
-    throw new Error(
-      `Failed to upload video: ${JSON.stringify(response.data)}`
-    );
+    throw new Error(`Failed to upload video: ${JSON.stringify(response.data)}`);
   }
 
   const videoId = response.data.id;
@@ -183,8 +183,7 @@ export async function getScheduledPosts(): Promise<Date[]> {
     const scheduledDates: Date[] = posts
       .filter((post: any) => post.scheduled_publish_time)
       .map(
-        (post: any) =>
-          new Date(parseInt(post.scheduled_publish_time) * 1000)
+        (post: any) => new Date(parseInt(post.scheduled_publish_time) * 1000)
       )
       .sort((a: Date, b: Date) => a.getTime() - b.getTime());
 

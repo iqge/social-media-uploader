@@ -56,9 +56,7 @@ router.get('/oauth2callback', async (req, res) => {
     console.log(`META_PAGE_ACCESS_TOKEN=${result.pageToken}`);
     console.log(`META_PAGE_ID=${result.pageId}`);
     if (result.instagramAccountId) {
-      console.log(
-        `INSTAGRAM_BUSINESS_ACCOUNT_ID=${result.instagramAccountId}`
-      );
+      console.log(`INSTAGRAM_BUSINESS_ACCOUNT_ID=${result.instagramAccountId}`);
     }
     console.log('=================================\n');
 

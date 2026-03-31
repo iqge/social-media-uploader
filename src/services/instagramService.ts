@@ -1,6 +1,10 @@
 // services/instagramService.ts - Instagram Reels upload logic
 import axios from 'axios';
-import { metaTokenStore, getGraphApiUrl, PUBLIC_BASE_URL } from '../config/meta';
+import {
+  metaTokenStore,
+  getGraphApiUrl,
+  PUBLIC_BASE_URL,
+} from '../config/meta';
 import logger from '../utils/logger';
 
 type ReelOptions = {
@@ -34,7 +38,9 @@ export async function uploadReel(
   }
 
   if (!accessToken) {
-    throw new Error('No Meta access token available. Please authenticate first.');
+    throw new Error(
+      'No Meta access token available. Please authenticate first.'
+    );
   }
 
   logger.info(`Starting Instagram Reel upload for IG user: ${igUserId}`);

@@ -230,7 +230,8 @@ const fetchScheduledVideosFromAPI = async (): Promise<Date[]> => {
       }
 
       totalFetched += items.length;
-      const nextPageToken: string | null | undefined = playlistResponse.data.nextPageToken;
+      const nextPageToken: string | null | undefined =
+        playlistResponse.data.nextPageToken;
       pageToken = nextPageToken ? nextPageToken : undefined;
 
       // Track consecutive empty pages to avoid fetching entire back-catalog
@@ -248,7 +249,10 @@ const fetchScheduledVideosFromAPI = async (): Promise<Date[]> => {
 
       // Stop if we've had too many consecutive pages without scheduled videos
       // This prevents scanning thousands of old published videos
-      if (consecutivePagesWithNoScheduled >= MAX_EMPTY_PAGES && totalFetched > 50) {
+      if (
+        consecutivePagesWithNoScheduled >= MAX_EMPTY_PAGES &&
+        totalFetched > 50
+      ) {
         console.log(
           `Stopping pagination after ${MAX_EMPTY_PAGES} consecutive pages with no scheduled videos`
         );
